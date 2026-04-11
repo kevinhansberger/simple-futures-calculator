@@ -594,6 +594,7 @@
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { clearStratFocus(); return }
+    if (e.key === 'x' || e.key === 'X') { e.preventDefault(); document.activeElement.blur(); return }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
 
     const key = e.key.toLowerCase()

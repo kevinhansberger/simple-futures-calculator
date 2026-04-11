@@ -72,7 +72,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-width: 600px;
+      width: 100%;
+      max-width: 900px;
       margin: 0 auto;
     }
 
@@ -195,7 +196,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 0.82rem;
-      min-width: 340px;
+      table-layout: auto;
     }
 
     th {
@@ -229,6 +230,12 @@
     #strategyBody tr.row-dimmed td { opacity: 0.1; }
 
     td.qty { color: var(--dir-color); font-weight: 700; font-size: 1rem; }
+    td.qty span {
+      display: inline-block;
+      border: 1.5px solid var(--dir-color);
+      border-radius: 5px;
+      padding: 1px 7px;
+    }
     td.tp  { color: var(--buy); }
     td.sl  { color: var(--sell); }
     td.sl2 { color: var(--sell); }
@@ -237,7 +244,7 @@
     /* ── Price levels ── */
     .price-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
     }
 
@@ -263,6 +270,29 @@
       font-weight: 700;
     }
 
+    .price-box-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .price-box-strat {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: right;
+      min-width: 28px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      border: 1.5px solid transparent;
+    }
+    .price-box-strat:empty { border-color: transparent; padding: 0; }
+    .price-box-strat.strat-tp { color: var(--buy); }
+    .price-box-strat.strat-tp:not(:empty) { border-color: var(--buy); }
+    .price-box-strat.strat-sl { color: var(--sell); }
+    .price-box-strat.strat-sl:not(:empty) { border-color: var(--sell); }
+
     .price-box.entry  { border-color: var(--buy); }
     .price-box.entry .price-box-value { color: var(--buy); }
     .price-box.tp2 .price-box-value   { color: var(--buy); }
@@ -272,8 +302,10 @@
 
     .price-box.no-price .price-box-value { color: var(--text-dim); }
 
-    @media (min-width: 420px) {
-      .price-grid { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 400px) {
+      .price-grid { grid-template-columns: repeat(2, 1fr); }
+      table { font-size: 0.75rem; }
+      td, th { padding: 6px 5px; }
     }
   </style>
 </head>
@@ -362,19 +394,31 @@
     <div class="price-grid">
       <div class="price-box entry">
         <div class="price-box-label">TP1</div>
-        <div class="price-box-value" id="outEntry">—</div>
+        <div class="price-box-row">
+          <div class="price-box-value" id="outEntry">—</div>
+          <div class="price-box-strat strat-tp" id="stratTp1"></div>
+        </div>
       </div>
       <div class="price-box tp2">
         <div class="price-box-label">TP2</div>
-        <div class="price-box-value" id="outTp2">—</div>
+        <div class="price-box-row">
+          <div class="price-box-value" id="outTp2">—</div>
+          <div class="price-box-strat strat-tp" id="stratTp2"></div>
+        </div>
       </div>
       <div class="price-box sl1">
         <div class="price-box-label">SL1</div>
-        <div class="price-box-value" id="outSl1">—</div>
+        <div class="price-box-row">
+          <div class="price-box-value" id="outSl1">—</div>
+          <div class="price-box-strat strat-sl" id="stratSl1"></div>
+        </div>
       </div>
       <div class="price-box sl2">
         <div class="price-box-label">SL2</div>
-        <div class="price-box-value" id="outSl2">—</div>
+        <div class="price-box-row">
+          <div class="price-box-value" id="outSl2">—</div>
+          <div class="price-box-strat strat-sl" id="stratSl2"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -405,6 +449,7 @@
 <script>
   // ── State ──
   let direction = 'b'
+  let selectedStratIndex = -1
 
   // ── Multipliers per contract ──
   const MULT = { NQ: 2, GC: 10, ES: 5 }
@@ -459,7 +504,7 @@
       const dTp2 = tpsl.tp2 !== '' && apyCopy ? tpsl.tp2 * copyMult : tpsl.tp2
 
       $('tgt' + i).textContent = '$' + fmt(target)
-      $('qty' + i).textContent = dQty || '0'
+      $('qty' + i).innerHTML = `<span>${dQty || '0'}</span>`
       $('tp1' + i).textContent = dTp1 !== '' ? dTp1 : '—'
       $('sl1' + i).textContent = dSl1 !== '' ? dSl1 : '—'
       $('sl2' + i).textContent = dSl2 !== '' ? dSl2 : '—'
@@ -493,6 +538,12 @@
       ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $( id).textContent = '—')
       document.querySelectorAll('.price-box').forEach(b => b.classList.add('no-price'))
     }
+
+    // Re-apply selected strategy numbers if one is active
+    if (selectedStratIndex >= 0) {
+      const row = $('strategyBody').rows[selectedStratIndex]
+      if (row) applyStratFocus(row, selectedStratIndex)
+    }
   }
 
   // ── Direction toggle ──
@@ -508,30 +559,57 @@
   $('btnSell').addEventListener('click', () => setDirection('s'))
 
   // ── Strategy row focus ──
-  Array.from($('strategyBody').rows).forEach(row => {
+  function clearStratFocus() {
+    selectedStratIndex = -1
+    Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
+    $('stratTp1').textContent = ''
+    $('stratTp2').textContent = ''
+    $('stratSl1').textContent = ''
+    $('stratSl2').textContent = ''
+  }
+
+  function applyStratFocus(row, i) {
+    selectedStratIndex = i
+    Array.from($('strategyBody').rows).forEach(r =>
+      r === row ? r.classList.remove('row-dimmed') : r.classList.add('row-dimmed')
+    )
+    $('stratTp1').textContent = $('tp1' + i).textContent !== '—' ? $('tp1' + i).textContent : ''
+    $('stratTp2').textContent = $('tp2' + i).textContent !== '—' ? $('tp2' + i).textContent : ''
+    $('stratSl1').textContent = $('sl1' + i).textContent !== '—' ? $('sl1' + i).textContent : ''
+    $('stratSl2').textContent = $('sl2' + i).textContent !== '—' ? $('sl2' + i).textContent : ''
+  }
+
+  Array.from($('strategyBody').rows).forEach((row, i) => {
     row.addEventListener('click', () => {
-      const alreadySelected = !row.classList.contains('row-dimmed') &&
-        Array.from($('strategyBody').rows).some(r => r !== row && r.classList.contains('row-dimmed'))
-      if (alreadySelected) {
-        // clicking same row again — reset
-        Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
-      } else {
-        Array.from($('strategyBody').rows).forEach(r =>
-          r === row ? r.classList.remove('row-dimmed') : r.classList.add('row-dimmed')
-        )
-      }
+      const isSelected = Array.from($('strategyBody').rows).some(r => r !== row && r.classList.contains('row-dimmed'))
+      const isSameRow  = !row.classList.contains('row-dimmed') && isSelected
+      isSameRow ? clearStratFocus() : applyStratFocus(row, i)
     })
   })
 
-  // ── Hotkeys: b = BUY, s = SELL, Esc = reset strategy focus ──
+  // ── Hotkeys ──
+  // b = BUY, s = SELL, Esc = reset
+  // v = VWAP, p = PCL, c = SCALP, o = ORB
+  const STRAT_KEYS = { 'v': 0, 'p': 1, 'c': 2, 'o': 3 }
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
+    if (e.key === 'Escape') { clearStratFocus(); return }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
+
+    const key = e.key.toLowerCase()
+
+    if (key in STRAT_KEYS) {
+      const i   = STRAT_KEYS[key]
+      const row = $('strategyBody').rows[i]
+      if (row) applyStratFocus(row, i)
       return
     }
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
-    if (e.key === 'b' || e.key === 'B') setDirection('b')
-    if (e.key === 's' || e.key === 'S') setDirection('s')
+
+    if (key === 'b') setDirection('b')
+    if (key === 's') setDirection('s')
+    if (key === 'e') { e.preventDefault(); const el = $('price'); el.value = ''; el.focus(); calculate() }
+    if (key === 'r') { const el = $('micros');  el.focus(); el.select() }
+    if (key === 't') { $('contract').focus() }
   })
 
   $('contract').addEventListener('change', calculate)

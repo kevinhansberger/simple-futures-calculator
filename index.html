@@ -327,9 +327,30 @@
       table { font-size: 0.75rem; }
       td, th { padding: 6px 5px; }
     }
+
+    #pullIndicator {
+      position: fixed;
+      top: -56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.1rem;
+      z-index: 999;
+      pointer-events: none;
+      transition: top 0.15s ease;
+    }
   </style>
 </head>
 <body data-dir="b">
+
+<div id="pullIndicator">↻</div>
 
 <header>
   <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -687,6 +708,36 @@
     $(id).addEventListener('input', calculate)
     $(id).addEventListener('change', calculate)
   })
+
+  // ── Pull to refresh ──
+  ;(function() {
+    const indicator = $('pullIndicator')
+    let startY = 0, pulling = false
+    const THRESHOLD = 80
+
+    document.addEventListener('touchstart', e => {
+      if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true }
+    }, { passive: true })
+
+    document.addEventListener('touchmove', e => {
+      if (!pulling) return
+      const dist = e.touches[0].clientY - startY
+      if (dist > 10) {
+        const pull = Math.min(dist, 120)
+        indicator.style.top = (pull * 0.4 - 20) + 'px'
+        indicator.style.transform = `translateX(-50%) rotate(${pull * 2}deg)`
+      }
+    }, { passive: true })
+
+    document.addEventListener('touchend', e => {
+      if (!pulling) return
+      pulling = false
+      const dist = e.changedTouches[0].clientY - startY
+      indicator.style.transition = 'top 0.2s ease'
+      indicator.style.top = '-56px'
+      if (dist > THRESHOLD) setTimeout(() => window.location.reload(), 200)
+    }, { passive: true })
+  })()
 
   // ── Service worker ──
   if ('serviceWorker' in navigator) {

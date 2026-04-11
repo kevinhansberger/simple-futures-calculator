@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f3460">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Futures Calc</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #e8e8e8;
+      --card:       #1a1a2e;
+      --border:     #2a2a4a;
+      --accent:     #0f3460;
+      --buy:        #00d4aa;
+      --sell:       #e94560;
+      --warn:       #f5a623;
+      --text:       #e0e0e0;
+      --text-dim:   #666;
+      --input-bg:   #0d1117;
+      --radius:     12px;
+      --dir-color:  var(--buy);
+    }
+
+    body[data-dir="s"] { --dir-color: var(--sell); }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.4;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    header {
+      background: var(--accent);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 12px #0007;
+    }
+
+    header svg { width: 28px; height: 28px; flex-shrink: 0; }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #fff;
+    }
+
+    header span {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: #ffffff88;
+      font-weight: 400;
+    }
+
+    main {
+      padding: 12px 12px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* ── Inputs ── */
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .input-group { display: flex; flex-direction: column; gap: 4px; }
+    .input-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    input, select {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 16px;
+      height: 44px;
+      padding: 0 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+
+    input:focus, select:focus { border-color: var(--dir-color); }
+
+    select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+    /* price input — large and prominent */
+    #price {
+      font-size: 1.6rem;
+      font-weight: 700;
+      height: 56px;
+      padding: 0 14px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      border-color: var(--dir-color);
+      color: var(--dir-color);
+      letter-spacing: 0.02em;
+    }
+
+    /* Direction toggle */
+    .dir-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 44px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .dir-btn {
+      background: var(--input-bg);
+      border: none;
+      color: var(--text-dim);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      letter-spacing: 0.05em;
+    }
+
+    .dir-btn.active-buy  { background: var(--buy);  color: #000; }
+    .dir-btn.active-sell { background: var(--sell); color: #fff; }
+
+    /* ── Goal breakdown ── */
+    .goal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .goal-row:last-child { border-bottom: none; }
+
+    .goal-label { font-size: 0.85rem; color: var(--text-dim); }
+
+    .goal-value {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .goal-value.warn { color: var(--sell); }
+
+    /* ── Strategy table ── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -14px;
+      padding: 0 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      min-width: 340px;
+    }
+
+    th {
+      text-align: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 6px 8px 8px;
+    }
+
+    th:first-child { text-align: left; }
+
+    td {
+      text-align: center;
+      padding: 8px 8px;
+      border-top: 1px solid var(--border);
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    td:first-child {
+      text-align: left;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    tr.dim td { opacity: 0.35; }
+
+    td.qty { color: var(--dir-color); font-weight: 700; font-size: 1rem; }
+    td.tp  { color: var(--buy); }
+    td.sl  { color: var(--sell); }
+    td.sl2 { color: var(--sell); }
+    td.target { color: var(--text-dim); font-size: 0.78rem; }
+
+    /* ── Price levels ── */
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .price-box {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .price-box-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .price-box-value {
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .price-box.entry  { border-color: var(--buy); }
+    .price-box.entry .price-box-value { color: var(--buy); }
+    .price-box.tp2 .price-box-value   { color: var(--buy); }
+    .price-box.sl1 .price-box-value   { color: var(--sell); }
+    .price-box.sl2 .price-box-value   { color: var(--sell); }
+
+
+    .price-box.no-price .price-box-value { color: var(--text-dim); }
+
+    @media (min-width: 420px) {
+      .price-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body data-dir="b">
+
+<header>
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <rect width="512" height="512" rx="80" fill="#0f3460"/>
+    <polyline points="60,400 180,260 280,320 420,120" fill="none" stroke="#00d4aa" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Futures Calc</h1>
+  <span>Trading Calculator</span>
+</header>
+
+<main>
+
+  <!-- INPUTS -->
+  <div class="card">
+    <div class="card-title">Setup</div>
+    <div class="input-grid">
+
+      <div class="input-group">
+        <label for="micros">Risk</label>
+        <input type="number" id="micros" value="20" min="1" inputmode="numeric">
+      </div>
+
+      <div class="input-group">
+        <label for="contract">Ticker</label>
+        <select id="contract">
+          <option value="NQ">NQ</option>
+          <option value="GC">GC</option>
+          <option value="ES">ES</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Direction</label>
+        <div class="dir-toggle">
+          <button class="dir-btn active-buy" id="btnBuy"  data-dir="b">BUY</button>
+          <button class="dir-btn"            id="btnSell" data-dir="s">SELL</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="copyTrading">Copy Trading Accounts</label>
+        <input type="number" id="copyTrading" value="0" min="0" inputmode="numeric">
+      </div>
+
+      <div class="input-group full">
+        <label for="price">Entry Price</label>
+        <input type="number" id="price" placeholder="e.g. 25000" inputmode="decimal" step="0.25">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STRATEGIES -->
+  <div class="card">
+    <div class="card-title">Strategies</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Target</th>
+            <th>Qty</th>
+            <th>TP1</th>
+            <th>SL1</th>
+            <th>SL2</th>
+            <th>TP2</th>
+          </tr>
+        </thead>
+        <tbody id="strategyBody">
+          <tr><td>VWAP</td><td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>PCL</td> <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>SCALP</td><td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
+          <tr><td>ORB</td> <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PRICE LEVELS -->
+  <div class="card">
+    <div class="card-title">Price Levels</div>
+    <div class="price-grid">
+      <div class="price-box entry">
+        <div class="price-box-label">TP1</div>
+        <div class="price-box-value" id="outEntry">—</div>
+      </div>
+      <div class="price-box tp2">
+        <div class="price-box-label">TP2</div>
+        <div class="price-box-value" id="outTp2">—</div>
+      </div>
+      <div class="price-box sl1">
+        <div class="price-box-label">SL1</div>
+        <div class="price-box-value" id="outSl1">—</div>
+      </div>
+      <div class="price-box sl2">
+        <div class="price-box-label">SL2</div>
+        <div class="price-box-value" id="outSl2">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOAL BREAKDOWN -->
+  <div class="card">
+    <div class="card-title">Targets</div>
+    <div class="goal-row">
+      <span class="goal-label">Monthly Goal ($)</span>
+      <span class="goal-value"><input type="number" id="monthlyGoal" value="2000" min="0" inputmode="numeric" style="background:transparent;border:none;border-bottom:1px solid var(--border);border-radius:0;color:var(--text);font-family:inherit;font-size:1rem;font-weight:600;width:100px;text-align:right;padding:0 2px;height:auto;"></span>
+    </div>
+    <div class="goal-row">
+      <span class="goal-label">Weekly Goal</span>
+      <span class="goal-value" id="outWeekly">—</span>
+    </div>
+    <div class="goal-row">
+      <span class="goal-label">Daily Goal</span>
+      <span class="goal-value" id="outDaily">—</span>
+    </div>
+    <div class="goal-row">
+      <span class="goal-label">Max Daily Loss</span>
+      <span class="goal-value warn" id="outMaxLoss">—</span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── State ──
+  let direction = 'b'
+
+  // ── Multipliers per contract ──
+  const MULT = { NQ: 2, GC: 10, ES: 5 }
+
+  // ── Helpers ──
+  const $ = id => document.getElementById(id)
+  const fmt  = n => n === '' || n === null ? '—' : typeof n === 'number' ? n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : n
+  const fmtP = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+
+  function calcTPSL(qty) {
+    if (!qty || qty === 0) return { tp1: '', sl1: '', sl2: '', tp2: '' }
+    const tp1 = qty === 1 ? 1 : qty - 1
+    const sl1 = Math.round(qty / 2)
+    const sl2 = (qty - sl1) === 0 ? '' : qty - sl1
+    const tp2 = qty <= 1 ? '' : 1
+    return { tp1, sl1, sl2, tp2 }
+  }
+
+  // ── Main recalculate ──
+  function calculate() {
+    const monthlyGoal = parseFloat($('monthlyGoal').value) || 0
+    const micros      = parseFloat($('micros').value) || 1
+    const contract    = $('contract').value
+    const price       = parseFloat($('price').value)
+    const mult        = MULT[contract]
+
+    // Goals
+    const weekly   = Math.ceil(monthlyGoal / 3)
+    const daily    = weekly / 3
+    const maxLoss  = weekly / 2
+
+    $('outWeekly').textContent  = '$' + fmt(weekly)
+    $('outDaily').textContent   = '$' + fmt(daily)
+    $('outMaxLoss').textContent = '$' + fmt(maxLoss)
+
+    // Strategy targets
+    const targets = [daily, daily / 2, daily / 3, daily / 4]
+    const rows = $('strategyBody').rows
+
+    const copyRaw  = parseFloat($('copyTrading').value) || 0
+    const copyMult = copyRaw > 0 ? copyRaw + 1 : 0
+    const apyCopy  = copyMult > 0
+
+    targets.forEach((target, i) => {
+      const qty  = Math.round(target / (mult * micros))
+      const tpsl = calcTPSL(qty)
+
+      const dQty = apyCopy ? qty * copyMult : qty
+      const dTp1 = tpsl.tp1 !== '' && apyCopy ? tpsl.tp1 * copyMult : tpsl.tp1
+      const dSl1 = tpsl.sl1 !== '' && apyCopy ? tpsl.sl1 * copyMult : tpsl.sl1
+      const dSl2 = tpsl.sl2 !== '' && apyCopy ? tpsl.sl2 * copyMult : tpsl.sl2
+      const dTp2 = tpsl.tp2 !== '' && apyCopy ? tpsl.tp2 * copyMult : tpsl.tp2
+
+      $('tgt' + i).textContent = '$' + fmt(target)
+      $('qty' + i).textContent = dQty || '0'
+      $('tp1' + i).textContent = dTp1 !== '' ? dTp1 : '—'
+      $('sl1' + i).textContent = dSl1 !== '' ? dSl1 : '—'
+      $('sl2' + i).textContent = dSl2 !== '' ? dSl2 : '—'
+      $('tp2' + i).textContent = dTp2 !== '' ? dTp2 : '—'
+
+      rows[i].classList.toggle('dim', qty === 0)
+    })
+
+    // Price levels
+    const hasPrice = !isNaN(price) && price > 0
+    if (hasPrice) {
+      let entry, sl1, sl2, tp2
+      if (direction === 'b') {
+        entry = price + micros + micros * 0.25
+        sl1   = price - micros
+        sl2   = price - micros * 2
+        tp2   = price + micros * 2
+      } else {
+        entry = price - micros - micros * 0.25
+        sl1   = price + micros
+        sl2   = price + micros * 2
+        tp2   = price - micros * 2
+      }
+      $('outEntry').textContent = fmtP(entry)
+      $('outSl1').textContent   = fmtP(sl1)
+      $('outSl2').textContent   = fmtP(sl2)
+      $('outTp2').textContent   = fmtP(tp2)
+
+      document.querySelectorAll('.price-box').forEach(b => b.classList.remove('no-price'))
+    } else {
+      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $( id).textContent = '—')
+      document.querySelectorAll('.price-box').forEach(b => b.classList.add('no-price'))
+    }
+  }
+
+  // ── Direction toggle ──
+  function setDirection(dir) {
+    direction = dir
+    document.body.dataset.dir = dir
+    $('btnBuy').className  = 'dir-btn' + (dir === 'b' ? ' active-buy'  : '')
+    $('btnSell').className = 'dir-btn' + (dir === 's' ? ' active-sell' : '')
+    calculate()
+  }
+
+  $('btnBuy').addEventListener('click',  () => setDirection('b'))
+  $('btnSell').addEventListener('click', () => setDirection('s'))
+
+  // ── Hotkeys: b = BUY, s = SELL (ignored when typing in an input) ──
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
+    if (e.key === 'b' || e.key === 'B') setDirection('b')
+    if (e.key === 's' || e.key === 'S') setDirection('s')
+  })
+
+  $('contract').addEventListener('change', calculate)
+  $('micros').addEventListener('input', calculate)
+  $('copyTrading').addEventListener('input', calculate)
+  $('price').addEventListener('input', calculate)
+
+  // ── Persist Monthly Goal ──
+  const stored = localStorage.getItem('monthlyGoal')
+  if (stored !== null) $('monthlyGoal').value = stored
+  $('monthlyGoal').addEventListener('input', () => localStorage.setItem('monthlyGoal', $('monthlyGoal').value))
+  $('monthlyGoal').addEventListener('change', () => localStorage.setItem('monthlyGoal', $('monthlyGoal').value))
+
+  // ── Persist Copy Trading ──
+  const storedCopy = localStorage.getItem('copyTrading')
+  if (storedCopy !== null) $('copyTrading').value = storedCopy
+  $('copyTrading').addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+  $('copyTrading').addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+
+  // ── Wire all inputs ──
+  ['monthlyGoal','micros','contract','price','copyTrading'].forEach(id => {
+    $(id).addEventListener('input', calculate)
+    $(id).addEventListener('change', calculate)
+  })
+
+  // ── Service worker ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .catch(err => console.warn('SW:', err))
+    })
+  }
+
+  // ── Init ──
+  calculate()
+</script>
+</body>
+</html>

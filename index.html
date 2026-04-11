@@ -225,6 +225,8 @@
     }
 
     tr.dim td { opacity: 0.35; }
+    #strategyBody tr { cursor: pointer; transition: opacity 0.15s; }
+    #strategyBody tr.row-dimmed td { opacity: 0.1; }
 
     td.qty { color: var(--dir-color); font-weight: 700; font-size: 1rem; }
     td.tp  { color: var(--buy); }
@@ -505,8 +507,28 @@
   $('btnBuy').addEventListener('click',  () => setDirection('b'))
   $('btnSell').addEventListener('click', () => setDirection('s'))
 
-  // ── Hotkeys: b = BUY, s = SELL (ignored when typing in an input) ──
+  // ── Strategy row focus ──
+  Array.from($('strategyBody').rows).forEach(row => {
+    row.addEventListener('click', () => {
+      const alreadySelected = !row.classList.contains('row-dimmed') &&
+        Array.from($('strategyBody').rows).some(r => r !== row && r.classList.contains('row-dimmed'))
+      if (alreadySelected) {
+        // clicking same row again — reset
+        Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
+      } else {
+        Array.from($('strategyBody').rows).forEach(r =>
+          r === row ? r.classList.remove('row-dimmed') : r.classList.add('row-dimmed')
+        )
+      }
+    })
+  })
+
+  // ── Hotkeys: b = BUY, s = SELL, Esc = reset strategy focus ──
   document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
+      return
+    }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
     if (e.key === 'b' || e.key === 'B') setDirection('b')
     if (e.key === 's' || e.key === 'S') setDirection('s')

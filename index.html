@@ -129,6 +129,12 @@
     select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
 
     /* price input — large and prominent */
+    .price-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
     #price {
       font-size: 1.6rem;
       font-weight: 700;
@@ -138,6 +144,20 @@
       border-color: var(--dir-color);
       color: var(--dir-color);
       letter-spacing: 0.02em;
+    }
+
+    #entryQtyBadge {
+      position: absolute;
+      right: 12px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--dir-color);
+      border: 1.5px solid var(--dir-color);
+      border-radius: 5px;
+      padding: 2px 7px;
+      pointer-events: none;
+      display: none;
     }
 
     /* Direction toggle */
@@ -356,35 +376,12 @@
 
       <div class="input-group full">
         <label for="price">Entry Price</label>
-        <input type="number" id="price" placeholder="e.g. 25000" inputmode="decimal" step="0.25">
+        <div class="price-input-wrap">
+          <input type="number" id="price" inputmode="decimal" step="0.25">
+          <span id="entryQtyBadge"></span>
+        </div>
       </div>
 
-    </div>
-  </div>
-
-  <!-- STRATEGIES -->
-  <div class="card">
-    <div class="card-title">Strategies</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Strategy</th>
-            <th>Target</th>
-            <th>Qty</th>
-            <th>TP1</th>
-            <th>SL1</th>
-            <th>SL2</th>
-            <th>TP2</th>
-          </tr>
-        </thead>
-        <tbody id="strategyBody">
-          <tr><td>VWAP</td><td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>PCL</td> <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
-          <tr><td>SCALP</td><td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
-          <tr><td>ORB</td> <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
-        </tbody>
-      </table>
     </div>
   </div>
 
@@ -420,6 +417,32 @@
           <div class="price-box-strat strat-sl" id="stratSl2"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- STRATEGIES -->
+  <div class="card">
+    <div class="card-title">Strategies</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Target</th>
+            <th>Qty</th>
+            <th>TP1</th>
+            <th>SL1</th>
+            <th>SL2</th>
+            <th>TP2</th>
+          </tr>
+        </thead>
+        <tbody id="strategyBody">
+          <tr><td>VWAP</td><td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>PCL</td> <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>SCALP</td><td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
+          <tr><td>ORB</td> <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -544,6 +567,8 @@
       const row = $('strategyBody').rows[selectedStratIndex]
       if (row) applyStratFocus(row, selectedStratIndex)
     }
+
+    updateEntryQtyBadge()
   }
 
   // ── Direction toggle ──
@@ -559,6 +584,22 @@
   $('btnSell').addEventListener('click', () => setDirection('s'))
 
   // ── Strategy row focus ──
+  function updateEntryQtyBadge() {
+    const badge = $('entryQtyBadge')
+    if (selectedStratIndex >= 0) {
+      const qty = $('qty' + selectedStratIndex).querySelector('span')
+      const val = qty ? qty.textContent : ''
+      if (val && val !== '0') {
+        badge.textContent = val
+        badge.style.display = 'inline-block'
+        $('price').style.paddingRight = (badge.offsetWidth + 24) + 'px'
+        return
+      }
+    }
+    badge.style.display = 'none'
+    $('price').style.paddingRight = '14px'
+  }
+
   function clearStratFocus() {
     selectedStratIndex = -1
     Array.from($('strategyBody').rows).forEach(r => r.classList.remove('row-dimmed'))
@@ -566,6 +607,7 @@
     $('stratTp2').textContent = ''
     $('stratSl1').textContent = ''
     $('stratSl2').textContent = ''
+    updateEntryQtyBadge()
   }
 
   function applyStratFocus(row, i) {
@@ -577,6 +619,7 @@
     $('stratTp2').textContent = $('tp2' + i).textContent !== '—' ? $('tp2' + i).textContent : ''
     $('stratSl1').textContent = $('sl1' + i).textContent !== '—' ? $('sl1' + i).textContent : ''
     $('stratSl2').textContent = $('sl2' + i).textContent !== '—' ? $('sl2' + i).textContent : ''
+    updateEntryQtyBadge()
   }
 
   Array.from($('strategyBody').rows).forEach((row, i) => {

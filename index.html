@@ -607,6 +607,8 @@
     $('stratTp2').textContent = ''
     $('stratSl1').textContent = ''
     $('stratSl2').textContent = ''
+    $('outTp2').closest('.price-box').style.opacity = ''
+    $('outSl2').closest('.price-box').style.opacity = ''
     updateEntryQtyBadge()
   }
 
@@ -615,10 +617,17 @@
     Array.from($('strategyBody').rows).forEach(r =>
       r === row ? r.classList.remove('row-dimmed') : r.classList.add('row-dimmed')
     )
+    const hasTp2 = $('tp2' + i).textContent !== '—'
+    const hasSl2 = $('sl2' + i).textContent !== '—'
+
     $('stratTp1').textContent = $('tp1' + i).textContent !== '—' ? $('tp1' + i).textContent : ''
-    $('stratTp2').textContent = $('tp2' + i).textContent !== '—' ? $('tp2' + i).textContent : ''
     $('stratSl1').textContent = $('sl1' + i).textContent !== '—' ? $('sl1' + i).textContent : ''
-    $('stratSl2').textContent = $('sl2' + i).textContent !== '—' ? $('sl2' + i).textContent : ''
+    $('stratTp2').textContent = hasTp2 ? $('tp2' + i).textContent : ''
+    $('stratSl2').textContent = hasSl2 ? $('sl2' + i).textContent : ''
+
+    // Hide price values for levels the strategy doesn't use
+    $('outTp2').closest('.price-box').style.opacity = hasTp2 ? '' : '0.15'
+    $('outSl2').closest('.price-box').style.opacity = hasSl2 ? '' : '0.15'
     updateEntryQtyBadge()
   }
 

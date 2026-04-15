@@ -674,10 +674,7 @@
   })
 
   // ── Hotkeys ──
-  // b = BUY, s = SELL, Esc = reset
-  // v = VWAP, p = PCL, c = SCALP, o = ORB
-  const STRAT_KEYS = { 'v': 0, 'p': 1, 'c': 2, 'o': 3 }
-
+  // b = BUY, s = SELL, Esc = reset strategy focus
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { clearStratFocus(); return }
     if (e.key === 'x' || e.key === 'X') { e.preventDefault(); document.activeElement.blur(); return }
@@ -685,17 +682,10 @@
 
     const key = e.key.toLowerCase()
 
-    if (key in STRAT_KEYS) {
-      const i   = STRAT_KEYS[key]
-      const row = $('strategyBody').rows[i]
-      if (row) applyStratFocus(row, i)
-      return
-    }
-
     if (key === 'b') setDirection('b')
     if (key === 's') setDirection('s')
     if (key === 'e') { e.preventDefault(); const el = $('price'); el.value = ''; el.focus(); calculate() }
-    if (key === 'r') { const el = $('micros');  el.focus(); el.select() }
+    if (key === 'a') { const el = $('micros');  el.focus(); el.select() }
     if (key === 't') { $('contract').focus() }
   })
 

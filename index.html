@@ -358,7 +358,7 @@
     <polyline points="60,400 180,260 280,320 420,120" fill="none" stroke="#00d4aa" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <h1>Futures Calc</h1>
-  <span>Trading Calculator</span>
+  <span>by Alnous</span>
 </header>
 
 <main>
@@ -466,10 +466,11 @@
           </tr>
         </thead>
         <tbody id="strategyBody">
-          <tr><td>VWAP</td><td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>PCL</td> <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
-          <tr><td>SCALP</td><td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
-          <tr><td>ORB</td> <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+          <tr><td>A+</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>A</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>B+</td>   <td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
+          <tr><td>B</td>    <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+          <tr><td>SCALP</td><td class="target" id="tgt4">—</td><td class="qty" id="qty4">—</td><td class="tp" id="tp14">—</td><td class="sl" id="sl14">—</td><td class="sl2" id="sl24">—</td><td class="tp" id="tp24">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -541,7 +542,7 @@
     $('outMaxLoss').textContent = '$' + fmt(maxLoss)
 
     // Strategy targets
-    const targets = [daily, daily / 2, daily / 3, daily / 4]
+    const targets = [daily * 1.2, daily, daily / 2, daily / 3, daily / 4]
     const rows = $('strategyBody').rows
 
     const copyRaw  = parseFloat($('copyTrading').value) || 0

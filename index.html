@@ -705,6 +705,7 @@
   // ── Persist Monthly Goal (default 1250) ──
   const stored = localStorage.getItem('monthlyGoal')
   $('monthlyGoal').value = stored !== null ? stored : '1250'
+  calculate() // run immediately so targets show on first paint
   $('monthlyGoal').addEventListener('input', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
   $('monthlyGoal').addEventListener('change', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
 

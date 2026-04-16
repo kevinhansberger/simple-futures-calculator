@@ -543,7 +543,7 @@
     $('outMaxLoss').textContent = '$' + fmtC(maxLoss)
 
     // Strategy targets
-    const targets = [daily * 1.2, daily, daily / 2, daily / 3, daily / 4]
+    const targets = [daily * 1.25, daily, daily / 2, daily / 3, daily / 4]
     const rows = $('strategyBody').rows
 
     const copyRaw  = parseFloat($('copyTrading').value) || 0

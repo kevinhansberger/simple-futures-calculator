@@ -98,18 +98,7 @@
       margin-bottom: 16px;
       flex-wrap: wrap;
     }
-    .import-actions label {
-      background: var(--accent);
-      color: var(--text);
-      border: none;
-      border-radius: 8px;
-      padding: 9px 16px;
-      font-size: .85rem;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .import-actions label:hover { filter: brightness(1.2); }
-    #clearDataBtn {
+#clearDataBtn {
       background: transparent;
       border: 1px solid var(--sell);
       color: var(--sell);
@@ -377,7 +366,6 @@
   </div>
 
   <div class="import-actions">
-    <label for="csvFileInput">📂 Import CSV</label>
     <input type="file" id="csvFileInput" accept=".csv" multiple>
     <div class="acct-dropdown-wrap" id="acctDropdownWrap">
       <button class="acct-dropdown-btn" id="acctDropdownBtn">
@@ -657,23 +645,40 @@ function makeMenuItem(label, key, checked) {
   cb.checked = checked
 
   cb.addEventListener('change', () => {
+    const accts = [...new Set(allTrades.map(t => t.account))].sort()
+    const allCb = acctMenu.querySelector('input[type="checkbox"]')
+
     if (key === 'all') {
-      // Check all when "All" is ticked; uncheck all when unticked (keep at least all)
-      activeAccts = new Set(['all'])
-      acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
+      if (cb.checked) {
+        // Checking "All" → select everything
+        activeAccts = new Set(['all'])
+        acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
+      } else {
+        // Unchecking "All" → switch to individual mode, all accounts still checked
+        activeAccts = new Set(accts)
+        // individual checkboxes stay checked; only the "All" checkbox unchecks
+      }
     } else {
+      // Individual account toggled
       activeAccts.delete('all')
+      if (allCb) allCb.checked = false
       if (cb.checked) {
         activeAccts.add(key)
       } else {
         activeAccts.delete(key)
-        if (activeAccts.size === 0) activeAccts = new Set(['all'])
+        // If nothing left, fall back to all
+        if (activeAccts.size === 0) {
+          activeAccts = new Set(['all'])
+          acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
+        }
       }
-      // Sync "All Accounts" checkbox
-      const allCb = acctMenu.querySelector('input[type="checkbox"]')
-      if (allCb) allCb.checked = activeAccts.has('all')
+      // If every individual account is now checked, restore "All" mode
+      if (accts.length && accts.every(a => activeAccts.has(a))) {
+        activeAccts = new Set(['all'])
+        if (allCb) allCb.checked = true
+      }
     }
-    const accts = [...new Set(allTrades.map(t => t.account))].sort()
+
     updateDropdownLabel(accts)
     renderAll()
   })

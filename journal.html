@@ -171,6 +171,51 @@
       letter-spacing: .02em;
     }
     .acct-menu-all:hover { background: rgba(0,212,170,.08); }
+    .acct-edit-btn {
+      margin-left: auto;
+      font-size: .72rem;
+      color: var(--text-dim);
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 2px 4px;
+      flex-shrink: 0;
+      background: none;
+      border: none;
+    }
+    .acct-edit-btn:hover { color: var(--buy); }
+    .acct-balance-row {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px 10px;
+      background: rgba(255,255,255,.03);
+      border-top: 1px solid var(--border);
+    }
+    .acct-balance-row.open { display: flex; }
+    .acct-balance-row label { font-size: .72rem; color: var(--text-dim); white-space: nowrap; }
+    .acct-balance-input {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .85rem;
+      padding: 5px 8px;
+      font-family: monospace;
+      min-width: 0;
+    }
+    .acct-balance-input:focus { outline: none; border-color: var(--buy); }
+    .acct-balance-save {
+      background: var(--buy);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: .8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
 
     /* ── Stats bar ── */
     .stats-bar {
@@ -462,8 +507,9 @@
 </div><!-- /page -->
 
 <script>
-// ── Storage key ──────────────────────────────────────────────────────────────
-const STORE_KEY = 'jrnl_trades_v1'
+// ── Storage keys ─────────────────────────────────────────────────────────────
+const STORE_KEY   = 'jrnl_trades_v1'
+const BALANCE_KEY = 'jrnl_balances_v1'
 
 // ── Chart.js global defaults ─────────────────────────────────────────────────
 Chart.defaults.color = '#888'
@@ -471,8 +517,9 @@ Chart.defaults.borderColor = '#2a2a4a'
 Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
 // ── State ────────────────────────────────────────────────────────────────────
-let allTrades   = []        // raw parsed trades (all accounts)
-let activeAccts = new Set() // 'all' or account strings
+let allTrades    = []        // raw parsed trades (all accounts)
+let activeAccts  = new Set() // 'all' or account strings
+let acctBalances = {}        // { '51859': 5000, ... }
 let calYear     = new Date().getFullYear()
 let calMonth    = new Date().getMonth() // 0-indexed
 
@@ -489,6 +536,14 @@ function loadFromStorage() {
 
 function saveToStorage() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(allTrades)) } catch {}
+}
+
+function loadBalances() {
+  try { acctBalances = JSON.parse(localStorage.getItem(BALANCE_KEY)) || {} } catch { acctBalances = {} }
+}
+
+function saveBalances() {
+  try { localStorage.setItem(BALANCE_KEY, JSON.stringify(acctBalances)) } catch {}
 }
 
 // ── CSV Parsing ──────────────────────────────────────────────────────────────
@@ -652,6 +707,9 @@ function buildAccountChips() {
 }
 
 function makeMenuItem(label, key, checked) {
+  const wrap = document.createElement('div')
+
+  // ── Main row (checkbox + label + Edit btn) ──
   const row = document.createElement('label')
   row.className = 'acct-menu-item'
 
@@ -661,13 +719,11 @@ function makeMenuItem(label, key, checked) {
 
   cb.addEventListener('change', () => {
     const accts = [...new Set(allTrades.map(t => t.account))].sort()
-    // Expand 'all' into every individual account before applying the change
     if (activeAccts.has('all')) activeAccts = new Set(accts)
     if (cb.checked) {
       activeAccts.add(key)
     } else {
       activeAccts.delete(key)
-      // Nothing left → fall back to all
       if (activeAccts.size === 0) {
         activeAccts = new Set(['all'])
         acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
@@ -681,9 +737,66 @@ function makeMenuItem(label, key, checked) {
   span.className = 'acct-label'
   span.textContent = label
 
+  const editBtn = document.createElement('button')
+  editBtn.className = 'acct-edit-btn'
+  editBtn.textContent = acctBalances[key] != null ? `$${Number(acctBalances[key]).toLocaleString()}` : 'Edit'
+  editBtn.title = 'Set initial balance'
+  editBtn.type = 'button'
+
   row.appendChild(cb)
   row.appendChild(span)
-  return row
+  row.appendChild(editBtn)
+  wrap.appendChild(row)
+
+  // ── Inline balance editor (hidden until Edit clicked) ──
+  const balRow = document.createElement('div')
+  balRow.className = 'acct-balance-row'
+
+  const balLabel = document.createElement('label')
+  balLabel.textContent = 'Initial balance:'
+
+  const balInput = document.createElement('input')
+  balInput.className = 'acct-balance-input'
+  balInput.type = 'number'
+  balInput.inputMode = 'decimal'
+  balInput.placeholder = '0.00'
+  balInput.value = acctBalances[key] != null ? acctBalances[key] : ''
+
+  const saveBtn = document.createElement('button')
+  saveBtn.className = 'acct-balance-save'
+  saveBtn.type = 'button'
+  saveBtn.textContent = 'Save'
+
+  const doSave = () => {
+    const val = parseFloat(balInput.value)
+    if (!isNaN(val)) {
+      acctBalances[key] = val
+      editBtn.textContent = `$${val.toLocaleString()}`
+    } else {
+      delete acctBalances[key]
+      editBtn.textContent = 'Edit'
+    }
+    saveBalances()
+    balRow.classList.remove('open')
+    renderAll()
+  }
+
+  saveBtn.addEventListener('click', doSave)
+  balInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave() })
+
+  editBtn.addEventListener('click', e => {
+    e.preventDefault()
+    e.stopPropagation()
+    balRow.classList.toggle('open')
+    if (balRow.classList.contains('open')) balInput.focus()
+  })
+
+  balRow.appendChild(balLabel)
+  balRow.appendChild(balInput)
+  balRow.appendChild(saveBtn)
+  wrap.appendChild(balRow)
+
+  return wrap
 }
 
 function updateDropdownLabel(accts) {
@@ -699,7 +812,14 @@ function updateDropdownLabel(accts) {
 
 // ── Stats bar ────────────────────────────────────────────────────────────────
 function renderStats(trades) {
-  const net   = trades.reduce((s, t) => s + t.pnl, 0)
+  // Sum initial balances for visible accounts
+  const visibleAccts = activeAccts.has('all')
+    ? [...new Set(allTrades.map(t => t.account))]
+    : [...activeAccts]
+  const initialBalance = visibleAccts.reduce((s, a) => s + (acctBalances[a] || 0), 0)
+
+  const tradePnl = trades.reduce((s, t) => s + t.pnl, 0)
+  const net = initialBalance + tradePnl
   const wins  = trades.filter(t => t.pnl > 0)
   const losses= trades.filter(t => t.pnl < 0)
   const winPct= trades.length ? (wins.length / trades.length * 100) : null
@@ -1158,6 +1278,7 @@ document.getElementById('calNext').addEventListener('click', () => {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadFromStorage()
+loadBalances()
 activeAccts = new Set(['all'])
 buildAccountChips()
 renderAll()

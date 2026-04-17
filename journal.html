@@ -164,6 +164,13 @@
     }
     .acct-menu-item .acct-label { flex: 1; font-family: monospace; }
     .acct-menu-divider { height: 1px; background: var(--border); }
+    .acct-menu-all {
+      color: var(--buy);
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: .02em;
+    }
+    .acct-menu-all:hover { background: rgba(0,212,170,.08); }
 
     /* ── Stats bar ── */
     .stats-bar {
@@ -618,8 +625,16 @@ function buildAccountChips() {
   const accts = [...new Set(allTrades.map(t => t.account))].sort()
   acctMenu.innerHTML = ''
 
-  // "All Accounts" row
-  const allRow = makeMenuItem('All Accounts', 'all', activeAccts.has('all'))
+  // "All Accounts" — plain button, no checkbox
+  const allRow = document.createElement('div')
+  allRow.className = 'acct-menu-item acct-menu-all'
+  allRow.textContent = 'All Accounts'
+  allRow.addEventListener('click', () => {
+    activeAccts = new Set(['all'])
+    acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
+    updateDropdownLabel(accts)
+    renderAll()
+  })
   acctMenu.appendChild(allRow)
 
   if (accts.length) {
@@ -646,39 +661,17 @@ function makeMenuItem(label, key, checked) {
 
   cb.addEventListener('change', () => {
     const accts = [...new Set(allTrades.map(t => t.account))].sort()
-    const allCb = acctMenu.querySelector('input[type="checkbox"]')
-
-    if (key === 'all') {
-      if (cb.checked) {
-        // Checking "All" → select everything
+    activeAccts.delete('all')
+    if (cb.checked) {
+      activeAccts.add(key)
+    } else {
+      activeAccts.delete(key)
+      // Nothing left → fall back to all
+      if (activeAccts.size === 0) {
         activeAccts = new Set(['all'])
         acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
-      } else {
-        // Unchecking "All" → switch to individual mode, all accounts still checked
-        activeAccts = new Set(accts)
-        // individual checkboxes stay checked; only the "All" checkbox unchecks
-      }
-    } else {
-      // Individual account toggled
-      activeAccts.delete('all')
-      if (allCb) allCb.checked = false
-      if (cb.checked) {
-        activeAccts.add(key)
-      } else {
-        activeAccts.delete(key)
-        // If nothing left, fall back to all
-        if (activeAccts.size === 0) {
-          activeAccts = new Set(['all'])
-          acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
-        }
-      }
-      // If every individual account is now checked, restore "All" mode
-      if (accts.length && accts.every(a => activeAccts.has(a))) {
-        activeAccts = new Set(['all'])
-        if (allCb) allCb.checked = true
       }
     }
-
     updateDropdownLabel(accts)
     renderAll()
   })

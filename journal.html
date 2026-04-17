@@ -119,24 +119,62 @@
       cursor: pointer;
     }
     #clearDataBtn:hover { background: rgba(233,69,96,.1); }
-    .account-filter {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      flex: 1;
+    /* ── Account dropdown ── */
+    .acct-dropdown-wrap {
+      position: relative;
     }
-    .acct-chip {
-      border: 1px solid var(--border);
+    .acct-dropdown-btn {
       background: var(--card);
-      color: var(--text-dim);
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: .8rem;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: .85rem;
       cursor: pointer;
-      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      min-width: 160px;
+      justify-content: space-between;
     }
-    .acct-chip.active { border-color: var(--buy); color: var(--buy); background: rgba(0,212,170,.1); }
+    .acct-dropdown-btn:hover { border-color: var(--buy); }
+    .acct-dropdown-btn .caret { font-size: .65rem; opacity: .6; transition: transform .15s; }
+    .acct-dropdown-btn.open .caret { transform: rotate(180deg); }
+    .acct-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px #0008;
+      z-index: 100;
+      min-width: 180px;
+      overflow: hidden;
+    }
+    .acct-dropdown-menu.open { display: block; }
+    .acct-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: .85rem;
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    .acct-menu-item:last-child { border-bottom: none; }
+    .acct-menu-item:hover { background: rgba(255,255,255,.05); }
+    .acct-menu-item input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--buy);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .acct-menu-item .acct-label { flex: 1; font-family: monospace; }
+    .acct-menu-divider { height: 1px; background: var(--border); }
 
     /* ── Stats bar ── */
     .stats-bar {
@@ -341,7 +379,13 @@
   <div class="import-actions">
     <label for="csvFileInput">📂 Import CSV</label>
     <input type="file" id="csvFileInput" accept=".csv" multiple>
-    <div class="account-filter" id="acctFilter"></div>
+    <div class="acct-dropdown-wrap" id="acctDropdownWrap">
+      <button class="acct-dropdown-btn" id="acctDropdownBtn">
+        <span id="acctDropdownLabel">All Accounts</span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="acct-dropdown-menu" id="acctDropdownMenu"></div>
+    </div>
     <button id="clearDataBtn">🗑 Clear All</button>
   </div>
 
@@ -565,40 +609,93 @@ function filteredTrades() {
   return allTrades.filter(t => activeAccts.has(t.account))
 }
 
-// ── Account filter chips ─────────────────────────────────────────────────────
+// ── Account dropdown ─────────────────────────────────────────────────────────
+const acctBtn  = document.getElementById('acctDropdownBtn')
+const acctMenu = document.getElementById('acctDropdownMenu')
+
+acctBtn.addEventListener('click', e => {
+  e.stopPropagation()
+  const open = acctMenu.classList.toggle('open')
+  acctBtn.classList.toggle('open', open)
+})
+
+document.addEventListener('click', () => {
+  acctMenu.classList.remove('open')
+  acctBtn.classList.remove('open')
+})
+
+acctMenu.addEventListener('click', e => e.stopPropagation())
+
 function buildAccountChips() {
   const accts = [...new Set(allTrades.map(t => t.account))].sort()
-  const container = document.getElementById('acctFilter')
-  container.innerHTML = ''
+  acctMenu.innerHTML = ''
 
-  const allChip = makeChip('All', 'all')
-  container.appendChild(allChip)
+  // "All Accounts" row
+  const allRow = makeMenuItem('All Accounts', 'all', activeAccts.has('all'))
+  acctMenu.appendChild(allRow)
+
+  if (accts.length) {
+    const divider = document.createElement('div')
+    divider.className = 'acct-menu-divider'
+    acctMenu.appendChild(divider)
+  }
 
   for (const a of accts) {
-    container.appendChild(makeChip(a, a))
+    const checked = activeAccts.has('all') || activeAccts.has(a)
+    acctMenu.appendChild(makeMenuItem(`#${a}`, a, checked))
   }
+
+  updateDropdownLabel(accts)
 }
 
-function makeChip(label, key) {
-  const el = document.createElement('div')
-  el.className = 'acct-chip' + (activeAccts.has(key) ? ' active' : '')
-  el.textContent = key === 'all' ? 'All Accounts' : `#${label}`
-  el.onclick = () => {
+function makeMenuItem(label, key, checked) {
+  const row = document.createElement('label')
+  row.className = 'acct-menu-item'
+
+  const cb = document.createElement('input')
+  cb.type = 'checkbox'
+  cb.checked = checked
+
+  cb.addEventListener('change', () => {
     if (key === 'all') {
+      // Check all when "All" is ticked; uncheck all when unticked (keep at least all)
       activeAccts = new Set(['all'])
+      acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
     } else {
       activeAccts.delete('all')
-      if (activeAccts.has(key)) {
+      if (cb.checked) {
+        activeAccts.add(key)
+      } else {
         activeAccts.delete(key)
         if (activeAccts.size === 0) activeAccts = new Set(['all'])
-      } else {
-        activeAccts.add(key)
       }
+      // Sync "All Accounts" checkbox
+      const allCb = acctMenu.querySelector('input[type="checkbox"]')
+      if (allCb) allCb.checked = activeAccts.has('all')
     }
-    buildAccountChips()
+    const accts = [...new Set(allTrades.map(t => t.account))].sort()
+    updateDropdownLabel(accts)
     renderAll()
+  })
+
+  const span = document.createElement('span')
+  span.className = 'acct-label'
+  span.textContent = label
+
+  row.appendChild(cb)
+  row.appendChild(span)
+  return row
+}
+
+function updateDropdownLabel(accts) {
+  const lbl = document.getElementById('acctDropdownLabel')
+  if (activeAccts.has('all') || activeAccts.size === accts.length) {
+    lbl.textContent = 'All Accounts'
+  } else if (activeAccts.size === 1) {
+    lbl.textContent = `#${[...activeAccts][0]}`
+  } else {
+    lbl.textContent = `${activeAccts.size} Accounts`
   }
-  return el
 }
 
 // ── Stats bar ────────────────────────────────────────────────────────────────

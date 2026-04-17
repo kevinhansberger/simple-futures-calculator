@@ -661,7 +661,8 @@ function makeMenuItem(label, key, checked) {
 
   cb.addEventListener('change', () => {
     const accts = [...new Set(allTrades.map(t => t.account))].sort()
-    activeAccts.delete('all')
+    // Expand 'all' into every individual account before applying the change
+    if (activeAccts.has('all')) activeAccts = new Set(accts)
     if (cb.checked) {
       activeAccts.add(key)
     } else {

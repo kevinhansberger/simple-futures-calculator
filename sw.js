@@ -1,5 +1,12 @@
-const CACHE_NAME = 'tofx3-v1'
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg']
+const CACHE_NAME = 'tofx3-v2'
+const ASSETS = [
+  './',
+  './index.html',
+  './journal.html',
+  './manifest.json',
+  './icon.svg',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js',
+]
 
 self.addEventListener('install', event => {
   event.waitUntil(

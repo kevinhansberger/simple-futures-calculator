@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f3460">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Trading Journal — Futures Calc</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #e8e8e8;
+      --card:      #1a1a2e;
+      --border:    #2a2a4a;
+      --accent:    #0f3460;
+      --buy:       #00d4aa;
+      --sell:      #e94560;
+      --warn:      #f5a623;
+      --text:      #e0e0e0;
+      --text-dim:  #888;
+      --input-bg:  #0d1117;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.4;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 24px);
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--accent);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header-logo {
+      width: 32px; height: 32px; flex-shrink: 0;
+      cursor: pointer;
+    }
+    .header-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      flex: 1;
+      cursor: pointer;
+    }
+    .header-title span { font-size: .75rem; font-weight: 400; opacity: .65; margin-left: 6px; }
+    .back-btn {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: .8rem;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.2); }
+
+    /* ── Layout ── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+    /* ── Import zone ── */
+    .import-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 16px;
+    }
+    .import-zone.drag-over { border-color: var(--buy); background: rgba(0,212,170,.06); }
+    .import-zone p { color: var(--text-dim); font-size: .9rem; margin-top: 6px; }
+    .import-zone strong { color: var(--text); font-size: 1rem; }
+    #csvFileInput { display: none; }
+    .import-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .import-actions label {
+      background: var(--accent);
+      color: var(--text);
+      border: none;
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: .85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .import-actions label:hover { filter: brightness(1.2); }
+    #clearDataBtn {
+      background: transparent;
+      border: 1px solid var(--sell);
+      color: var(--sell);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+    #clearDataBtn:hover { background: rgba(233,69,96,.1); }
+    .account-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      flex: 1;
+    }
+    .acct-chip {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-dim);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .acct-chip.active { border-color: var(--buy); color: var(--buy); background: rgba(0,212,170,.1); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 700px) { .stats-bar { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 420px) { .stats-bar { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-label { font-size: .7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .stat-value { font-family: "Courier New", monospace; font-size: 1.15rem; font-weight: 700; }
+    .stat-value.pos { color: var(--buy); }
+    .stat-value.neg { color: var(--sell); }
+    .stat-value.neu { color: var(--text); }
+
+    /* ── Section card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--accent);
+      padding: 10px 16px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-body { padding: 16px; }
+
+    /* ── Calendar ── */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+    .cal-nav button {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: .8rem;
+    }
+    .cal-nav button:hover { background: rgba(255,255,255,.2); }
+    .cal-month-label { font-size: .85rem; font-weight: 600; }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr) 80px;
+      gap: 3px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: .65rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      padding: 4px 0;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .cal-week-label {
+      font-size: .6rem;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .cal-week-label .wk-pnl { font-family: monospace; font-size: .7rem; font-weight: 700; }
+    .cal-cell {
+      background: #111827;
+      border-radius: 6px;
+      padding: 6px 5px;
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      cursor: default;
+    }
+    .cal-cell.empty { background: transparent; }
+    .cal-cell.has-trades { cursor: pointer; }
+    .cal-cell.has-trades:hover { filter: brightness(1.15); }
+    .cal-cell.win { border-left: 3px solid var(--buy); }
+    .cal-cell.loss { border-left: 3px solid var(--sell); }
+    .cal-date { font-size: .65rem; color: var(--text-dim); }
+    .cal-pnl { font-family: monospace; font-size: .7rem; font-weight: 700; }
+    .cal-pnl.pos { color: var(--buy); }
+    .cal-pnl.neg { color: var(--sell); }
+    .cal-meta { font-size: .6rem; color: var(--text-dim); }
+    @media (max-width: 580px) {
+      .cal-grid { grid-template-columns: repeat(7, 1fr) 54px; }
+      .cal-cell { min-height: 46px; padding: 4px 3px; }
+      .cal-pnl { font-size: .62rem; }
+    }
+
+    /* ── Trades table ── */
+    .trades-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    thead th {
+      background: #111827;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:hover { background: rgba(255,255,255,.03); }
+    tbody td { padding: 8px 10px; white-space: nowrap; }
+    .pnl-pos { color: var(--buy); font-family: monospace; font-weight: 700; }
+    .pnl-neg { color: var(--sell); font-family: monospace; font-weight: 700; }
+    .badge-long {
+      background: rgba(0,212,170,.15);
+      color: var(--buy);
+      border: 1px solid var(--buy);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .7rem;
+    }
+    .badge-short {
+      background: rgba(233,69,96,.15);
+      color: var(--sell);
+      border: 1px solid var(--sell);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .7rem;
+    }
+    .badge-acct {
+      background: rgba(15,52,96,.5);
+      color: #7ab3e0;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .7rem;
+      font-family: monospace;
+    }
+    .empty-msg {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 40px 20px;
+      font-size: .9rem;
+    }
+
+    /* ── Charts ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-full { grid-column: 1 / -1; }
+    .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+    .chart-title { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+    .chart-canvas { position: relative; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg class="header-logo" onclick="window.location.reload()" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="500" height="500" rx="80" fill="#0f3460"/>
+    <polyline points="60,400 180,260 280,320 420,120" fill="none" stroke="#00d4aa" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="header-title" onclick="window.location.reload()">Trading Journal <span>Futures Calc</span></div>
+  <a class="back-btn" href="index.html">← Calc</a>
+</header>
+
+<div class="page">
+
+  <!-- Import -->
+  <div class="import-zone" id="dropZone">
+    <strong>Drop Tradovate CSV files here</strong>
+    <p>Account is auto-detected from filename (e.g. tof51859.csv → account 51859)</p>
+  </div>
+
+  <div class="import-actions">
+    <label for="csvFileInput">📂 Import CSV</label>
+    <input type="file" id="csvFileInput" accept=".csv" multiple>
+    <div class="account-filter" id="acctFilter"></div>
+    <button id="clearDataBtn">🗑 Clear All</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card"><div class="stat-label">Net P&amp;L</div><div class="stat-value neu" id="sNetPnl">—</div></div>
+    <div class="stat-card"><div class="stat-label">Trade Win %</div><div class="stat-value neu" id="sWinPct">—</div></div>
+    <div class="stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value neu" id="sProfitFactor">—</div></div>
+    <div class="stat-card"><div class="stat-label">Day Win %</div><div class="stat-value neu" id="sDayWin">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Win / Loss</div><div class="stat-value neu" id="sAvgWL">—</div></div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="card">
+    <div class="card-header">
+      Calendar
+      <div class="cal-nav">
+        <button id="calPrev">‹</button>
+        <span class="cal-month-label" id="calLabel"></span>
+        <button id="calNext">›</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-wrap chart-full">
+      <div class="chart-title">Cumulative P&amp;L</div>
+      <div class="chart-canvas"><canvas id="chartCumPnl" height="120"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Daily P&amp;L</div>
+      <div class="chart-canvas"><canvas id="chartDailyPnl" height="180"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Drawdown</div>
+      <div class="chart-canvas"><canvas id="chartDrawdown" height="180"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Trade Time of Day</div>
+      <div class="chart-canvas"><canvas id="chartTimeScatter" height="180"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Trade Duration (min)</div>
+      <div class="chart-canvas"><canvas id="chartDuration" height="180"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Trades table -->
+  <div class="card">
+    <div class="card-header">Recent Trades</div>
+    <div class="card-body" style="padding:0">
+      <div class="trades-wrap">
+        <table id="tradesTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Qty</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>Duration</th>
+              <th>P&amp;L</th>
+              <th>Account</th>
+            </tr>
+          </thead>
+          <tbody id="tradesTbody"></tbody>
+        </table>
+        <div class="empty-msg" id="emptyMsg">No trades yet — import a Tradovate CSV to get started.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── Storage key ──────────────────────────────────────────────────────────────
+const STORE_KEY = 'jrnl_trades_v1'
+
+// ── Chart.js global defaults ─────────────────────────────────────────────────
+Chart.defaults.color = '#888'
+Chart.defaults.borderColor = '#2a2a4a'
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allTrades   = []        // raw parsed trades (all accounts)
+let activeAccts = new Set() // 'all' or account strings
+let calYear     = new Date().getFullYear()
+let calMonth    = new Date().getMonth() // 0-indexed
+
+// Chart instances
+let chartCum, chartDaily, chartDD, chartTime, chartDur
+
+// ── Load persisted trades ────────────────────────────────────────────────────
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY)
+    if (raw) allTrades = JSON.parse(raw)
+  } catch { allTrades = [] }
+}
+
+function saveToStorage() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(allTrades)) } catch {}
+}
+
+// ── CSV Parsing ──────────────────────────────────────────────────────────────
+function parsePnl(str) {
+  if (!str) return 0
+  str = str.trim()
+  // $(108.50) → -108.50  |  $38.00 → 38.00
+  if (str.startsWith('$(')) {
+    return -parseFloat(str.slice(2, -1)) || 0
+  }
+  return parseFloat(str.replace(/[$,]/g, '')) || 0
+}
+
+function parseTS(str) {
+  if (!str) return null
+  // MM/DD/YYYY HH:MM:SS
+  const m = str.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/)
+  if (!m) return null
+  return new Date(+m[3], +m[1]-1, +m[2], +m[4], +m[5], +m[6])
+}
+
+function parseDuration(str) {
+  if (!str) return 0
+  let mins = 0, secs = 0
+  const m = str.match(/(\d+)min/)
+  const s = str.match(/(\d+)sec/)
+  if (m) mins = +m[1]
+  if (s) secs = +s[1]
+  return mins + secs / 60
+}
+
+function parseCSV(text, filename) {
+  const acct = filename.replace(/\.csv$/i, '').replace(/^tof/i, '')
+  const lines = text.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return []
+
+  const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+  const col = name => header.indexOf(name)
+
+  const trades = []
+  for (let i = 1; i < lines.length; i++) {
+    const raw = lines[i]
+    // CSV-aware split (handles quoted fields)
+    const fields = splitCsvLine(raw)
+    if (fields.length < header.length) continue
+
+    const get = name => (fields[col(name)] || '').trim().replace(/^"|"$/g, '')
+
+    const boughtTS = parseTS(get('boughtTimestamp'))
+    const soldTS   = parseTS(get('soldTimestamp'))
+    if (!boughtTS || !soldTS) continue
+
+    const pnl  = parsePnl(get('pnl'))
+    const side = boughtTS <= soldTS ? 'Long' : 'Short'
+
+    // entry/exit price: Long → bought, Short → sold as entry
+    const buyPrice  = parseFloat(get('buyPrice'))  || 0
+    const sellPrice = parseFloat(get('sellPrice')) || 0
+    const entry = side === 'Long' ? buyPrice : sellPrice
+    const exit  = side === 'Long' ? sellPrice : buyPrice
+
+    trades.push({
+      id:       `${acct}_${get('buyFillId')}_${get('sellFillId')}`,
+      account:  acct,
+      symbol:   get('symbol'),
+      side,
+      qty:      parseInt(get('qty')) || 1,
+      entry,
+      exit,
+      pnl,
+      boughtTS: boughtTS.toISOString(),
+      soldTS:   soldTS.toISOString(),
+      duration: parseDuration(get('duration')),
+      dateKey:  formatDateKey(boughtTS),
+    })
+  }
+  return trades
+}
+
+function splitCsvLine(line) {
+  const fields = []
+  let cur = '', inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') { inQ = !inQ }
+    else if (c === ',' && !inQ) { fields.push(cur); cur = '' }
+    else { cur += c }
+  }
+  fields.push(cur)
+  return fields
+}
+
+function formatDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+// ── Merge trades (deduplicate by id) ────────────────────────────────────────
+function mergeTrades(incoming) {
+  const existing = new Set(allTrades.map(t => t.id))
+  let added = 0
+  for (const t of incoming) {
+    if (!existing.has(t.id)) {
+      allTrades.push(t)
+      added++
+    }
+  }
+  return added
+}
+
+// ── Filter trades by active accounts ────────────────────────────────────────
+function filteredTrades() {
+  if (activeAccts.has('all')) return allTrades
+  return allTrades.filter(t => activeAccts.has(t.account))
+}
+
+// ── Account filter chips ─────────────────────────────────────────────────────
+function buildAccountChips() {
+  const accts = [...new Set(allTrades.map(t => t.account))].sort()
+  const container = document.getElementById('acctFilter')
+  container.innerHTML = ''
+
+  const allChip = makeChip('All', 'all')
+  container.appendChild(allChip)
+
+  for (const a of accts) {
+    container.appendChild(makeChip(a, a))
+  }
+}
+
+function makeChip(label, key) {
+  const el = document.createElement('div')
+  el.className = 'acct-chip' + (activeAccts.has(key) ? ' active' : '')
+  el.textContent = key === 'all' ? 'All Accounts' : `#${label}`
+  el.onclick = () => {
+    if (key === 'all') {
+      activeAccts = new Set(['all'])
+    } else {
+      activeAccts.delete('all')
+      if (activeAccts.has(key)) {
+        activeAccts.delete(key)
+        if (activeAccts.size === 0) activeAccts = new Set(['all'])
+      } else {
+        activeAccts.add(key)
+      }
+    }
+    buildAccountChips()
+    renderAll()
+  }
+  return el
+}
+
+// ── Stats bar ────────────────────────────────────────────────────────────────
+function renderStats(trades) {
+  const net   = trades.reduce((s, t) => s + t.pnl, 0)
+  const wins  = trades.filter(t => t.pnl > 0)
+  const losses= trades.filter(t => t.pnl < 0)
+  const winPct= trades.length ? (wins.length / trades.length * 100) : null
+
+  const grossWin  = wins.reduce((s,t) => s + t.pnl, 0)
+  const grossLoss = Math.abs(losses.reduce((s,t) => s + t.pnl, 0))
+  const pf        = grossLoss > 0 ? grossWin / grossLoss : null
+
+  // Day win %
+  const dayMap = {}
+  for (const t of trades) {
+    if (!dayMap[t.dateKey]) dayMap[t.dateKey] = 0
+    dayMap[t.dateKey] += t.pnl
+  }
+  const days = Object.values(dayMap)
+  const dayWins = days.filter(v => v > 0).length
+  const dayWinPct = days.length ? (dayWins / days.length * 100) : null
+
+  const avgWin  = wins.length  ? grossWin / wins.length : null
+  const avgLoss = losses.length? grossLoss / losses.length : null
+
+  const set = (id, val, cls) => {
+    const el = document.getElementById(id)
+    el.textContent = val
+    el.className = 'stat-value ' + cls
+  }
+
+  set('sNetPnl',       net !== 0 || trades.length ? fmtDollar(net) : '—', net >= 0 ? 'pos' : 'neg')
+  set('sWinPct',       winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct >= 50 ? 'pos' : 'neg')
+  set('sProfitFactor', pf !== null ? pf.toFixed(2) : '—', pf >= 1 ? 'pos' : 'neg')
+  set('sDayWin',       dayWinPct !== null ? dayWinPct.toFixed(1) + '%' : '—', dayWinPct >= 50 ? 'pos' : 'neg')
+  set('sAvgWL', avgWin !== null || avgLoss !== null
+    ? `${avgWin !== null ? fmtDollar(avgWin) : '—'} / ${avgLoss !== null ? fmtDollar(-avgLoss) : '—'}`
+    : '—', 'neu')
+}
+
+function fmtDollar(n) {
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return (n < 0 ? '-$' : '$') + abs
+}
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+function renderCalendar(trades) {
+  document.getElementById('calLabel').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`
+
+  // Build day map for selected month
+  const dayMap = {}
+  for (const t of trades) {
+    const d = new Date(t.boughtTS)
+    if (d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue
+    const key = formatDateKey(d)
+    if (!dayMap[key]) dayMap[key] = { pnl: 0, count: 0, wins: 0 }
+    dayMap[key].pnl   += t.pnl
+    dayMap[key].count += 1
+    if (t.pnl > 0) dayMap[key].wins++
+  }
+
+  const grid = document.getElementById('calGrid')
+  grid.innerHTML = ''
+
+  // Headers (day names + week col)
+  for (const dn of DAY_NAMES) {
+    const el = document.createElement('div')
+    el.className = 'cal-day-name'
+    el.textContent = dn
+    grid.appendChild(el)
+  }
+  const whdr = document.createElement('div')
+  whdr.className = 'cal-day-name'
+  whdr.textContent = 'Week'
+  grid.appendChild(whdr)
+
+  // Days
+  const firstDow = new Date(calYear, calMonth, 1).getDay()
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+
+  let weekPnl = 0
+  let weekStart = 0 // track week
+
+  // Leading blanks
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div')
+    el.className = 'cal-cell empty'
+    grid.appendChild(el)
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = (firstDow + d - 1) % 7
+    const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const info = dayMap[key]
+
+    const el = document.createElement('div')
+    el.className = 'cal-cell' + (info ? (info.pnl >= 0 ? ' win has-trades' : ' loss has-trades') : '')
+
+    const dateEl = document.createElement('div')
+    dateEl.className = 'cal-date'
+    dateEl.textContent = d
+    el.appendChild(dateEl)
+
+    if (info) {
+      const pnlEl = document.createElement('div')
+      pnlEl.className = 'cal-pnl ' + (info.pnl >= 0 ? 'pos' : 'neg')
+      pnlEl.textContent = fmtDollar(info.pnl)
+      el.appendChild(pnlEl)
+
+      const metaEl = document.createElement('div')
+      metaEl.className = 'cal-meta'
+      metaEl.textContent = `${info.count}T · ${Math.round(info.wins/info.count*100)}%W`
+      el.appendChild(metaEl)
+
+      weekPnl += info.pnl
+    }
+
+    grid.appendChild(el)
+
+    // End of week (Saturday) or end of month → insert week summary
+    if (dow === 6 || d === daysInMonth) {
+      const wkEl = document.createElement('div')
+      wkEl.className = 'cal-week-label'
+      const wkPnlEl = document.createElement('div')
+      wkPnlEl.className = 'wk-pnl ' + (weekPnl >= 0 ? 'pos' : 'neg')
+      wkPnlEl.style.color = weekPnl >= 0 ? 'var(--buy)' : 'var(--sell)'
+      wkPnlEl.textContent = fmtDollar(weekPnl)
+      wkEl.appendChild(wkPnlEl)
+      grid.appendChild(wkEl)
+      weekPnl = 0
+
+      // If last day didn't fall on Saturday, fill remaining cells
+      if (d === daysInMonth && dow !== 6) {
+        for (let fill = dow + 1; fill < 7; fill++) {
+          const blank = document.createElement('div')
+          blank.className = 'cal-cell empty'
+          grid.appendChild(blank)
+        }
+      }
+    }
+  }
+}
+
+// ── Trades table ─────────────────────────────────────────────────────────────
+function renderTable(trades) {
+  const tbody = document.getElementById('tradesTbody')
+  const empty = document.getElementById('emptyMsg')
+
+  // Sort newest first
+  const sorted = [...trades].sort((a,b) => b.boughtTS.localeCompare(a.boughtTS))
+  const show = sorted.slice(0, 200) // cap at 200 rows
+
+  tbody.innerHTML = ''
+
+  if (!show.length) {
+    empty.style.display = ''
+    return
+  }
+  empty.style.display = 'none'
+
+  for (const t of show) {
+    const dt = new Date(t.boughtTS)
+    const dateStr = `${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()}`
+    const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+
+    const tr = document.createElement('tr')
+    tr.innerHTML = `
+      <td>${dateStr}</td>
+      <td>${timeStr}</td>
+      <td style="font-weight:600">${t.symbol}</td>
+      <td><span class="badge-${t.side.toLowerCase()}">${t.side}</span></td>
+      <td style="text-align:center">${t.qty}</td>
+      <td style="font-family:monospace">${t.entry.toFixed(2)}</td>
+      <td style="font-family:monospace">${t.exit.toFixed(2)}</td>
+      <td>${t.duration < 1 ? Math.round(t.duration*60)+'s' : t.duration.toFixed(1)+'m'}</td>
+      <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtDollar(t.pnl)}</td>
+      <td><span class="badge-acct">${t.account}</span></td>
+    `
+    tbody.appendChild(tr)
+  }
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+function renderCharts(trades) {
+  const sorted = [...trades].sort((a,b) => a.boughtTS.localeCompare(b.boughtTS))
+
+  // 1. Cumulative P&L
+  const cumLabels = []
+  const cumData   = []
+  let running = 0
+  for (const t of sorted) {
+    running += t.pnl
+    const d = new Date(t.boughtTS)
+    cumLabels.push(`${d.getMonth()+1}/${d.getDate()}`)
+    cumData.push(+running.toFixed(2))
+  }
+
+  destroyChart('chartCum', chartCum)
+  chartCum = new Chart(document.getElementById('chartCumPnl'), {
+    type: 'line',
+    data: {
+      labels: cumLabels,
+      datasets: [{
+        data: cumData,
+        borderColor: '#00d4aa',
+        backgroundColor: 'rgba(0,212,170,.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: cumData.length > 60 ? 0 : 3,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: chartOpts({ dollar: true })
+  })
+
+  // 2. Daily P&L
+  const dayMap = {}
+  for (const t of sorted) {
+    if (!dayMap[t.dateKey]) dayMap[t.dateKey] = 0
+    dayMap[t.dateKey] = +(dayMap[t.dateKey] + t.pnl).toFixed(2)
+  }
+  const dayKeys = Object.keys(dayMap).sort()
+  const dayColors = dayKeys.map(k => dayMap[k] >= 0 ? 'rgba(0,212,170,.7)' : 'rgba(233,69,96,.7)')
+
+  destroyChart('chartDaily', chartDaily)
+  chartDaily = new Chart(document.getElementById('chartDailyPnl'), {
+    type: 'bar',
+    data: {
+      labels: dayKeys.map(k => { const p = k.split('-'); return `${+p[1]}/${+p[2]}` }),
+      datasets: [{
+        data: dayKeys.map(k => dayMap[k]),
+        backgroundColor: dayColors,
+        borderRadius: 3,
+      }]
+    },
+    options: chartOpts({ dollar: true })
+  })
+
+  // 3. Drawdown
+  const ddData = []
+  let peak = 0, runDD = 0
+  for (const t of sorted) {
+    runDD += t.pnl
+    if (runDD > peak) peak = runDD
+    ddData.push(+Math.min(0, runDD - peak).toFixed(2))
+  }
+
+  destroyChart('chartDD', chartDD)
+  chartDD = new Chart(document.getElementById('chartDrawdown'), {
+    type: 'line',
+    data: {
+      labels: cumLabels,
+      datasets: [{
+        data: ddData,
+        borderColor: '#e94560',
+        backgroundColor: 'rgba(233,69,96,.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+      }]
+    },
+    options: chartOpts({ dollar: true })
+  })
+
+  // 4. Trade time scatter (hour of day vs P&L)
+  const timePoints = sorted.map(t => {
+    const d = new Date(t.boughtTS)
+    const hour = d.getHours() + d.getMinutes() / 60
+    return { x: +hour.toFixed(2), y: +t.pnl.toFixed(2), pnl: t.pnl }
+  })
+
+  destroyChart('chartTime', chartTime)
+  chartTime = new Chart(document.getElementById('chartTimeScatter'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: timePoints,
+        backgroundColor: timePoints.map(p => p.pnl >= 0 ? 'rgba(0,212,170,.6)' : 'rgba(233,69,96,.6)'),
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      ...chartOpts({ dollar: true }),
+      scales: {
+        x: {
+          title: { display: true, text: 'Hour (ET)', color: '#888', font: { size: 10 } },
+          ticks: {
+            color: '#888', font: { size: 10 },
+            callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}`
+          },
+          grid: { color: '#2a2a4a' }
+        },
+        y: {
+          ticks: { color: '#888', font: { size: 10 }, callback: v => '$'+v },
+          grid: { color: '#2a2a4a' }
+        }
+      }
+    }
+  })
+
+  // 5. Duration scatter (duration min vs P&L)
+  const durPoints = sorted.map(t => ({ x: +t.duration.toFixed(2), y: +t.pnl.toFixed(2), pnl: t.pnl }))
+
+  destroyChart('chartDur', chartDur)
+  chartDur = new Chart(document.getElementById('chartDuration'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: durPoints,
+        backgroundColor: durPoints.map(p => p.pnl >= 0 ? 'rgba(0,212,170,.6)' : 'rgba(233,69,96,.6)'),
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      ...chartOpts({ dollar: true }),
+      scales: {
+        x: {
+          title: { display: true, text: 'Duration (min)', color: '#888', font: { size: 10 } },
+          ticks: { color: '#888', font: { size: 10 } },
+          grid: { color: '#2a2a4a' }
+        },
+        y: {
+          ticks: { color: '#888', font: { size: 10 }, callback: v => '$'+v },
+          grid: { color: '#2a2a4a' }
+        }
+      }
+    }
+  })
+}
+
+function destroyChart(varName, instance) {
+  if (instance) { try { instance.destroy() } catch {} }
+}
+
+function chartOpts({ dollar = false } = {}) {
+  return {
+    responsive: true,
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => dollar ? fmtDollar(ctx.parsed.y ?? ctx.raw.y) : ctx.formattedValue
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#888', font: { size: 10 }, maxRotation: 45 },
+        grid: { color: '#2a2a4a' }
+      },
+      y: {
+        ticks: { color: '#888', font: { size: 10 }, callback: v => dollar ? '$'+v : v },
+        grid: { color: '#2a2a4a' }
+      }
+    }
+  }
+}
+
+// ── Full render ──────────────────────────────────────────────────────────────
+function renderAll() {
+  const trades = filteredTrades()
+  renderStats(trades)
+  renderCalendar(trades)
+  renderTable(trades)
+  renderCharts(trades)
+}
+
+// ── File handling ────────────────────────────────────────────────────────────
+function handleFiles(files) {
+  let total = 0
+  let done  = 0
+  const readers = [...files].filter(f => f.name.toLowerCase().endsWith('.csv'))
+  if (!readers.length) return
+
+  for (const file of readers) {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const parsed = parseCSV(e.target.result, file.name)
+      const added  = mergeTrades(parsed)
+      total += added
+      done++
+      if (done === readers.length) {
+        saveToStorage()
+        if (total === 0) {
+          alert('No new trades found (already imported or empty files).')
+        } else {
+          alert(`Imported ${total} new trade${total !== 1 ? 's' : ''}.`)
+        }
+        buildAccountChips()
+        renderAll()
+      }
+    }
+    reader.readAsText(file)
+  }
+}
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone')
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') })
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'))
+dropZone.addEventListener('drop', e => {
+  e.preventDefault()
+  dropZone.classList.remove('drag-over')
+  handleFiles(e.dataTransfer.files)
+})
+dropZone.addEventListener('click', () => document.getElementById('csvFileInput').click())
+
+document.getElementById('csvFileInput').addEventListener('change', e => {
+  handleFiles(e.target.files)
+  e.target.value = ''
+})
+
+// ── Clear data ───────────────────────────────────────────────────────────────
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  if (!confirm('Clear all trade data? This cannot be undone.')) return
+  allTrades = []
+  activeAccts = new Set(['all'])
+  saveToStorage()
+  buildAccountChips()
+  renderAll()
+})
+
+// ── Calendar navigation ──────────────────────────────────────────────────────
+document.getElementById('calPrev').addEventListener('click', () => {
+  calMonth--
+  if (calMonth < 0) { calMonth = 11; calYear-- }
+  renderCalendar(filteredTrades())
+})
+document.getElementById('calNext').addEventListener('click', () => {
+  calMonth++
+  if (calMonth > 11) { calMonth = 0; calYear++ }
+  renderCalendar(filteredTrades())
+})
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadFromStorage()
+activeAccts = new Set(['all'])
+buildAccountChips()
+renderAll()
+</script>
+</body>
+</html>

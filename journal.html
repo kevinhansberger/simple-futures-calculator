@@ -47,31 +47,31 @@
       position: sticky;
       top: 0;
       z-index: 20;
+      box-shadow: 0 2px 12px #0007;
     }
-    .header-logo {
-      width: 32px; height: 32px; flex-shrink: 0;
-      cursor: pointer;
-    }
-    .header-title {
+
+    header svg { width: 28px; height: 28px; flex-shrink: 0; }
+
+    header h1 {
       font-size: 1.1rem;
       font-weight: 700;
-      letter-spacing: .04em;
+      letter-spacing: 0.05em;
+      color: #fff;
       flex: 1;
       cursor: pointer;
     }
-    .header-title span { font-size: .75rem; font-weight: 400; opacity: .65; margin-left: 6px; }
-    .back-btn {
+
+    header a.nav-btn {
       background: rgba(255,255,255,.12);
       border: 1px solid rgba(255,255,255,.2);
-      color: var(--text);
+      color: #e0e0e0;
       border-radius: 8px;
-      padding: 6px 12px;
+      padding: 6px 14px;
       font-size: .8rem;
-      cursor: pointer;
       text-decoration: none;
       white-space: nowrap;
     }
-    .back-btn:hover { background: rgba(255,255,255,.2); }
+    header a.nav-btn:hover { background: rgba(255,255,255,.2); }
 
     /* ── Layout ── */
     .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
@@ -322,12 +322,12 @@
 <body>
 
 <header>
-  <svg class="header-logo" onclick="window.location.reload()" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="500" height="500" rx="80" fill="#0f3460"/>
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" onclick="window.location.reload()" style="cursor:pointer;">
+    <rect width="512" height="512" rx="80" fill="#0f3460"/>
     <polyline points="60,400 180,260 280,320 420,120" fill="none" stroke="#00d4aa" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
-  <div class="header-title" onclick="window.location.reload()">Trading Journal <span>Futures Calc</span></div>
-  <span style="font-size:.75rem;font-weight:400;opacity:.65;white-space:nowrap;">by Alnous</span>
+  <h1 onclick="window.location.reload()">Trading Journal</h1>
+  <a class="nav-btn" href="index.html">← Calc</a>
 </header>
 
 <div class="page">

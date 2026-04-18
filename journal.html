@@ -304,6 +304,11 @@
       gap: 2px;
     }
     .cal-week-label .wk-pnl { font-family: monospace; font-size: .7rem; font-weight: 700; }
+    .cal-week-label .wk-pnl.goal-met {
+      border: 1px solid var(--buy);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
     .cal-cell {
       background: #111827;
       border-radius: 6px;
@@ -936,10 +941,12 @@ function renderCalendar(trades) {
 
     // End of week (Saturday) or end of month → insert week summary
     if (dow === 6 || d === daysInMonth) {
+      const weeklyGoal = Math.ceil((parseFloat(localStorage.getItem('monthlyGoal')) || 1250) / 3)
       const wkEl = document.createElement('div')
       wkEl.className = 'cal-week-label'
       const wkPnlEl = document.createElement('div')
-      wkPnlEl.className = 'wk-pnl ' + (weekPnl >= 0 ? 'pos' : 'neg')
+      const goalMet = weekPnl >= weeklyGoal
+      wkPnlEl.className = 'wk-pnl ' + (weekPnl >= 0 ? 'pos' : 'neg') + (goalMet ? ' goal-met' : '')
       wkPnlEl.style.color = weekPnl >= 0 ? 'var(--buy)' : 'var(--sell)'
       wkPnlEl.textContent = fmtDollar(weekPnl)
       wkEl.appendChild(wkPnlEl)

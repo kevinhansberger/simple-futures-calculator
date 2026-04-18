@@ -842,16 +842,27 @@ function buildAccountChips() {
   trashBtn.style.cssText = 'background:none;border:none;color:#888;cursor:pointer;padding:2px 4px;display:flex;align-items:center;flex-shrink:0;margin-left:auto;'
   trashBtn.addEventListener('mouseenter', () => trashBtn.style.color = '#e94560')
   trashBtn.addEventListener('mouseleave', () => trashBtn.style.color = '#888')
-  trashBtn.addEventListener('click', e => {
+  trashBtn.addEventListener('click', async e => {
     e.stopPropagation()
-    if (!confirm('Clear all trade data? This cannot be undone.')) return
-    allTrades = []
-    activeAccts = new Set(['all'])
-    saveToStorage()
-    acctMenu.classList.remove('open')
-    acctBtn.classList.remove('open')
-    buildAccountChips()
-    renderAll()
+    if (!confirm('Clear all data and cache for this site? This cannot be undone.')) return
+
+    // Clear all localStorage
+    localStorage.clear()
+
+    // Clear all service worker caches
+    if ('caches' in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(k => caches.delete(k)))
+    }
+
+    // Unregister service workers
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+    }
+
+    // Reload fresh
+    window.location.reload()
   })
   const syncBtn = document.createElement('button')
   syncBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>`

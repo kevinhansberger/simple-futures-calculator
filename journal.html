@@ -392,9 +392,6 @@
     .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
     .chart-title { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
     .chart-canvas { position: relative; }
-    .chart-time-scroll { overflow-x: auto; overflow-y: hidden; cursor: grab; }
-    .chart-time-scroll:active { cursor: grabbing; }
-    .chart-time-scroll canvas { display: block; }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -466,7 +463,7 @@
     </div>
     <div class="chart-wrap">
       <div class="chart-title">Trade Time of Day</div>
-      <div class="chart-canvas chart-time-scroll" id="chartTimeWrap"><canvas id="chartTimeScatter" height="180"></canvas></div>
+      <div class="chart-canvas"><canvas id="chartTimeScatter" height="180"></canvas></div>
     </div>
     <div class="chart-wrap">
       <div class="chart-title">Trade Duration (min)</div>
@@ -1040,41 +1037,24 @@ function renderCharts(trades) {
     return { x: +hour.toFixed(2), y: +t.pnl.toFixed(2), pnl: t.pnl }
   })
 
-  // Time scatter — fixed-width canvas so full day is scrollable, default view 8:30–10:30
-  const PX_PER_HOUR = 120          // pixels per hour across the full 0–24h axis
-  const TIME_CANVAS_W = 24 * PX_PER_HOUR  // 2880px total
-
-  const timeCanvas = document.getElementById('chartTimeScatter')
-  timeCanvas.width  = TIME_CANVAS_W
-  timeCanvas.style.width  = TIME_CANVAS_W + 'px'
-
   destroyChart('chartTime', chartTime)
-  chartTime = new Chart(timeCanvas, {
+  chartTime = new Chart(document.getElementById('chartTimeScatter'), {
     type: 'scatter',
     data: {
       datasets: [{
         data: timePoints,
         backgroundColor: timePoints.map(p => p.pnl >= 0 ? 'rgba(0,212,170,.6)' : 'rgba(233,69,96,.6)'),
-        pointRadius: 5,
+        pointRadius: 4,
       }]
     },
     options: {
-      responsive: false,
-      animation: { duration: 300 },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmtDollar(ctx.raw.y) } }
-      },
+      ...chartOpts({ dollar: true }),
       scales: {
         x: {
-          min: 0, max: 24,
           title: { display: true, text: 'Hour ET', color: '#888', font: { size: 10 } },
           ticks: {
             color: '#888', font: { size: 10 },
-            stepSize: 0.5,
-            callback: v => Number.isInteger(v * 2)
-              ? `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2,'0')}`
-              : ''
+            callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}`
           },
           grid: { color: '#2a2a4a' }
         },
@@ -1085,13 +1065,6 @@ function renderCharts(trades) {
       }
     }
   })
-
-  // Scroll the wrapper so 8:30 is at the left edge (with a small left margin)
-  const timeWrap = document.getElementById('chartTimeWrap')
-  // Chart.js reserves ~50px on the left for the y-axis; 8.5h * PX_PER_HOUR = right position of 8:30
-  const yAxisOffset = 50
-  const scrollTo = yAxisOffset + (8.5 * PX_PER_HOUR) - 20  // 20px before 8:30
-  timeWrap.scrollLeft = scrollTo
 
   // 5. Duration scatter (duration min vs P&L)
   const durPoints = sorted.map(t => ({ x: +t.duration.toFixed(2), y: +t.pnl.toFixed(2), pnl: t.pnl }))

@@ -309,6 +309,11 @@
       border-radius: 4px;
       padding: 2px 4px;
     }
+    .cal-week-label .wk-pnl.goal-bust {
+      border: 1px solid var(--sell);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
     .cal-cell {
       background: #111827;
       border-radius: 6px;
@@ -945,8 +950,9 @@ function renderCalendar(trades) {
       const wkEl = document.createElement('div')
       wkEl.className = 'cal-week-label'
       const wkPnlEl = document.createElement('div')
-      const goalMet = weekPnl >= weeklyGoal
-      wkPnlEl.className = 'wk-pnl ' + (weekPnl >= 0 ? 'pos' : 'neg') + (goalMet ? ' goal-met' : '')
+      const goalMet  = weekPnl >= weeklyGoal
+      const goalBust = weekPnl <= -weeklyGoal
+      wkPnlEl.className = 'wk-pnl ' + (weekPnl >= 0 ? 'pos' : 'neg') + (goalMet ? ' goal-met' : goalBust ? ' goal-bust' : '')
       wkPnlEl.style.color = weekPnl >= 0 ? 'var(--buy)' : 'var(--sell)'
       wkPnlEl.textContent = fmtDollar(weekPnl)
       wkEl.appendChild(wkPnlEl)

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f3460">
@@ -1640,18 +1641,26 @@ function renderFallbackChart(trade, container, ph, phMsg) {
   document.getElementById('tcSub').textContent +=  ' · entry→exit only (market data unavailable)'
 }
 
+// Self-hosted Cloudflare Worker proxy (deploy proxy-worker.js as "yf-proxy")
+const YF_PROXY = 'https://yf-proxy.sagemediaco.workers.dev/proxy'
+
 async function fetchYahoo(url) {
-  // 1. Direct request (works in some browsers/regions)
+  // 1. Self-hosted CF Worker proxy (most reliable — same account, no rate limits)
+  try {
+    const r = await fetch(`${YF_PROXY}?url=${encodeURIComponent(url)}`)
+    if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
+  } catch {}
+  // 2. Direct request (works in some browsers / if Yahoo relaxes CORS)
   try {
     const r = await fetch(url)
     if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
   } catch {}
-  // 2. Via corsproxy.io (bypasses CORS restrictions)
+  // 3. corsproxy.io fallback
   try {
     const r = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`)
     if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
   } catch {}
-  // 3. Via allorigins (second proxy fallback)
+  // 4. allorigins fallback
   try {
     const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`)
     if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }

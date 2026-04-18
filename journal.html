@@ -1733,6 +1733,8 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
     upColor: '#00d4aa', downColor: '#e94560',
     borderUpColor: '#00d4aa', borderDownColor: '#e94560',
     wickUpColor: '#00d4aa', wickDownColor: '#e94560',
+    lastValueVisible: false,
+    priceLineVisible: false,
   })
   series.setData(candles)
   addMarkersAndLines(series, trade, candles)

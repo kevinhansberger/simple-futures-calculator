@@ -1636,7 +1636,9 @@ function renderFallbackChart(trade, container, ph, phMsg) {
   series.setData(pts)
   addMarkersAndLines(series, trade, pts)
   tcChart.timeScale().fitContent()
-  series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
+  requestAnimationFrame(() => {
+    series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
+  })
 
   // Label so user knows this isn't real market data
   document.getElementById('tcSub').textContent +=  ' · entry→exit only (market data unavailable)'
@@ -1673,8 +1675,33 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
   const yahooSym   = toYahooSymbol(trade.symbol)
   const encodedSym = encodeURIComponent(yahooSym)
   const durationMs = new Date(trade.soldTS) - new Date(trade.boughtTS)
-  const buffer     = Math.max(durationMs * 0.3, 20 * 60 * 1000)
-  const interval   = durationMs < 30*60*1000 ? '1m' : durationMs < 3*60*60*1000 ? '5m' : '15m'
+  const ageMs      = Date.now() - new Date(trade.boughtTS).getTime()
+  const ageDays    = ageMs / (1000 * 60 * 60 * 24)
+
+  // Yahoo Finance intraday data limits:
+  //   1m  → last 7 days only
+  //   2m  → last 60 days
+  //   5m  → last 60 days
+  //   15m → last 60 days
+  //   60m → last 730 days
+  let interval
+  if (ageDays <= 6) {
+    interval = durationMs < 30*60*1000 ? '1m' : '2m'
+  } else if (ageDays <= 59) {
+    interval = durationMs < 60*60*1000 ? '2m' : '5m'
+  } else if (ageDays <= 729) {
+    interval = '60m'
+  } else {
+    interval = '1d'
+  }
+
+  // Small buffer — just enough for a few context candles on each side
+  const minBuffer = interval === '1m'  ?  8*60*1000   //  8 min  (~8 candles)
+                  : interval === '2m'  ? 12*60*1000   // 12 min  (~6 candles)
+                  : interval === '5m'  ? 20*60*1000   // 20 min  (~4 candles)
+                  : interval === '60m' ? 90*60*1000   // 90 min  (~2 candles)
+                  :                      3*24*60*60*1000 // 3 days for daily
+  const buffer = Math.max(durationMs * 0.3, minBuffer)
   const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
   const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
 
@@ -1708,7 +1735,9 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
   series.setData(candles)
   addMarkersAndLines(series, trade, candles)
   tcChart.timeScale().fitContent()
-  series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
+  requestAnimationFrame(() => {
+    series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
+  })
 }
 
 document.getElementById('tcClose').addEventListener('click', () => {

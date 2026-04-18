@@ -1430,13 +1430,13 @@ function loadChecklist() {
 }
 
 function setEditMode(editing) {
-  routineDisplay.style.display  = editing ? 'none' : ''
-  rulesDisplay.style.display    = editing ? 'none' : ''
+  routineDisplay.style.display  = editing ? 'none' : 'block'
+  rulesDisplay.style.display    = editing ? 'none' : 'block'
   routineTextarea.style.display = editing ? 'block' : 'none'
   rulesTextarea.style.display   = editing ? 'block' : 'none'
-  checklistEdit.style.display   = editing ? 'none' : ''
-  checklistSave.style.display   = editing ? '' : 'none'
-  checklistCancel.style.display = editing ? '' : 'none'
+  checklistEdit.style.display   = editing ? 'none' : 'block'
+  checklistSave.style.display   = editing ? 'block' : 'none'
+  checklistCancel.style.display = editing ? 'block' : 'none'
 }
 
 document.getElementById('checkBtn').addEventListener('click', () => {

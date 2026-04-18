@@ -99,6 +99,20 @@
     #syncFolderBtn:hover { filter: brightness(1.25); }
     #syncFolderBtn svg { display: block; }
     #folderInput { display: none; }
+    #checkBtn {
+      background: #555;
+      border: none;
+      border-radius: 8px;
+      padding: 0 10px;
+      height: 38px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    #checkBtn:hover { filter: brightness(1.2); }
+    #checkBtn svg { display: block; }
     #moneyBtn {
       background: var(--buy);
       border: none;
@@ -113,20 +127,6 @@
     }
     #moneyBtn:hover { filter: brightness(1.15); }
     #moneyBtn svg { display: block; }
-    #clearDataBtn {
-      background: transparent;
-      border: 1px solid #555;
-      color: #999;
-      border-radius: 8px;
-      padding: 0 12px;
-      height: 38px;
-      font-size: 1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #clearDataBtn:hover { background: rgba(255,255,255,.06); color: #bbb; border-color: #777; }
     /* ── Account dropdown ── */
     .acct-dropdown-wrap {
       position: relative;
@@ -426,6 +426,113 @@
     /* Hide page scrollbar */
     body { scrollbar-width: none; }
     body::-webkit-scrollbar { display: none; }
+
+    /* ── Daily Checklist Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 560px;
+      max-height: 88dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 16px 48px #000a;
+    }
+    .modal-header {
+      background: var(--accent);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-header h2 { font-size: .85rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .modal-close {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      color: #fff;
+      border-radius: 6px;
+      width: 28px; height: 28px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .modal-close:hover { background: rgba(255,255,255,.22); }
+    .modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .modal-section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .modal-display {
+      font-size: .88rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      min-height: 60px;
+    }
+    .modal-display:empty::before { content: 'Nothing saved yet.'; color: var(--text-dim); font-style: italic; }
+    .modal-textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .88rem;
+      font-family: inherit;
+      line-height: 1.65;
+      padding: 10px 12px;
+      resize: vertical;
+      min-height: 120px;
+      display: none;
+    }
+    .modal-textarea:focus { outline: none; border-color: var(--buy); }
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .modal-btn {
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .modal-btn.edit { background: var(--accent); color: #fff; }
+    .modal-btn.save { background: var(--buy); color: #000; display: none; }
+    .modal-btn.cancel { background: transparent; border: 1px solid #555; color: #999; display: none; }
+    .modal-btn:hover { filter: brightness(1.15); }
     /* Keep subtle scrollbar for inner scrollable areas */
     .trades-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
     .trades-wrap::-webkit-scrollbar-track { background: transparent; }
@@ -462,15 +569,17 @@
         <path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/>
       </svg>
     </button>
-    <button id="moneyBtn" title="Goal">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.5 3h5L12 6.5z"/>
-        <path d="M12 6.5C7.86 6.5 4.5 9.86 4.5 14a7.5 7.5 0 0 0 15 0c0-4.14-3.36-7.5-7.5-7.5z"/>
-        <line x1="12" y1="11" x2="12" y2="17"/>
-        <line x1="9.5" y1="14" x2="14.5" y2="14"/>
+    <button id="checkBtn" title="Check">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
       </svg>
     </button>
-    <button id="clearDataBtn" title="Clear All">🗑</button>
+    <button id="moneyBtn" title="Goal">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Stats -->
@@ -542,6 +651,33 @@
   </div>
 
 </div><!-- /page -->
+
+<!-- Daily Checklist Modal -->
+<div class="modal-overlay" id="checklistOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Daily Checklist</h2>
+      <button class="modal-close" id="checklistClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <div class="modal-section-label">Daily Routine</div>
+        <div class="modal-display" id="routineDisplay"></div>
+        <textarea class="modal-textarea" id="routineTextarea" placeholder="Enter your daily routine..."></textarea>
+      </div>
+      <div>
+        <div class="modal-section-label">Daily Rules</div>
+        <div class="modal-display" id="rulesDisplay"></div>
+        <textarea class="modal-textarea" id="rulesTextarea" placeholder="Enter your daily rules..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" id="checklistCancel">Cancel</button>
+      <button class="modal-btn edit" id="checklistEdit">Edit</button>
+      <button class="modal-btn save" id="checklistSave">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -720,7 +856,31 @@ function buildAccountChips() {
   // "All Accounts" — plain button, no checkbox
   const allRow = document.createElement('div')
   allRow.className = 'acct-menu-item acct-menu-all'
-  allRow.textContent = 'All Accounts'
+
+  const allLabel = document.createElement('span')
+  allLabel.textContent = 'All Accounts'
+  allLabel.style.flex = '1'
+  allRow.appendChild(allLabel)
+
+  const trashBtn = document.createElement('button')
+  trashBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`
+  trashBtn.title = 'Clear all trade data'
+  trashBtn.style.cssText = 'background:none;border:none;color:#888;cursor:pointer;padding:2px 4px;display:flex;align-items:center;flex-shrink:0;margin-left:auto;'
+  trashBtn.addEventListener('mouseenter', () => trashBtn.style.color = '#e94560')
+  trashBtn.addEventListener('mouseleave', () => trashBtn.style.color = '#888')
+  trashBtn.addEventListener('click', e => {
+    e.stopPropagation()
+    if (!confirm('Clear all trade data? This cannot be undone.')) return
+    allTrades = []
+    activeAccts = new Set(['all'])
+    saveToStorage()
+    acctMenu.classList.remove('open')
+    acctBtn.classList.remove('open')
+    buildAccountChips()
+    renderAll()
+  })
+  allRow.appendChild(trashBtn)
+
   allRow.addEventListener('click', () => {
     activeAccts = new Set(['all'])
     acctMenu.querySelectorAll('input[type="checkbox"]').forEach(el => { el.checked = true })
@@ -1245,14 +1405,6 @@ document.getElementById('folderInput').addEventListener('change', e => {
 
 
 // ── Clear data ───────────────────────────────────────────────────────────────
-document.getElementById('clearDataBtn').addEventListener('click', () => {
-  if (!confirm('Clear all trade data? This cannot be undone.')) return
-  allTrades = []
-  activeAccts = new Set(['all'])
-  saveToStorage()
-  buildAccountChips()
-  renderAll()
-})
 
 // ── Calendar navigation ──────────────────────────────────────────────────────
 document.getElementById('calPrev').addEventListener('click', () => {
@@ -1264,6 +1416,66 @@ document.getElementById('calNext').addEventListener('click', () => {
   calMonth++
   if (calMonth > 11) { calMonth = 0; calYear++ }
   renderCalendar(filteredTrades())
+})
+
+// ── Daily Checklist Modal ────────────────────────────────────────────────────
+const ROUTINE_KEY = 'jrnl_routine_v1'
+const RULES_KEY   = 'jrnl_rules_v1'
+
+const checklistOverlay  = document.getElementById('checklistOverlay')
+const routineDisplay    = document.getElementById('routineDisplay')
+const rulesDisplay      = document.getElementById('rulesDisplay')
+const routineTextarea   = document.getElementById('routineTextarea')
+const rulesTextarea     = document.getElementById('rulesTextarea')
+const checklistEdit     = document.getElementById('checklistEdit')
+const checklistSave     = document.getElementById('checklistSave')
+const checklistCancel   = document.getElementById('checklistCancel')
+
+function loadChecklist() {
+  const routine = localStorage.getItem(ROUTINE_KEY) || ''
+  const rules   = localStorage.getItem(RULES_KEY)   || ''
+  routineDisplay.textContent  = routine
+  rulesDisplay.textContent    = rules
+  routineTextarea.value       = routine
+  rulesTextarea.value         = rules
+}
+
+function setEditMode(editing) {
+  routineDisplay.style.display  = editing ? 'none' : ''
+  rulesDisplay.style.display    = editing ? 'none' : ''
+  routineTextarea.style.display = editing ? 'block' : 'none'
+  rulesTextarea.style.display   = editing ? 'block' : 'none'
+  checklistEdit.style.display   = editing ? 'none' : ''
+  checklistSave.style.display   = editing ? '' : 'none'
+  checklistCancel.style.display = editing ? '' : 'none'
+}
+
+document.getElementById('checkBtn').addEventListener('click', () => {
+  loadChecklist()
+  setEditMode(false)
+  checklistOverlay.classList.add('open')
+})
+
+document.getElementById('checklistClose').addEventListener('click', () => {
+  checklistOverlay.classList.remove('open')
+})
+
+checklistOverlay.addEventListener('click', e => {
+  if (e.target === checklistOverlay) checklistOverlay.classList.remove('open')
+})
+
+checklistEdit.addEventListener('click', () => setEditMode(true))
+
+checklistCancel.addEventListener('click', () => {
+  loadChecklist()
+  setEditMode(false)
+})
+
+checklistSave.addEventListener('click', () => {
+  localStorage.setItem(ROUTINE_KEY, routineTextarea.value)
+  localStorage.setItem(RULES_KEY,   rulesTextarea.value)
+  loadChecklist()
+  setEditMode(false)
 })
 
 // ── Init ─────────────────────────────────────────────────────────────────────

@@ -347,6 +347,7 @@
     .cal-cell.empty { background: transparent; }
     .cal-cell.has-trades { cursor: pointer; }
     .cal-cell.has-trades:hover { filter: brightness(1.15); }
+    .cal-cell.selected { outline: 2px solid var(--text); outline-offset: -2px; }
     .cal-cell.win { border-left: 3px solid var(--buy); }
     .cal-cell.loss { border-left: 3px solid var(--sell); }
     .cal-date { font-size: .65rem; color: var(--text-dim); }
@@ -689,6 +690,7 @@ let activeAccts  = new Set() // 'all' or account strings
 let acctBalances = {}        // { '51859': 5000, ... }
 let calYear     = new Date().getFullYear()
 let calMonth    = new Date().getMonth() // 0-indexed
+let selectedCalDay = null // 'YYYY-MM-DD' or null
 
 // Chart instances
 let chartTime, chartDur
@@ -1140,7 +1142,21 @@ function renderCalendar(trades) {
       el.appendChild(metaEl)
 
       weekPnl += info.pnl
+
+      // Click to filter Recent Trades to this day
+      el.addEventListener('click', () => {
+        selectedCalDay = selectedCalDay === key ? null : key
+        // Update selected highlight without full re-render
+        document.querySelectorAll('.cal-cell.selected').forEach(c => c.classList.remove('selected'))
+        if (selectedCalDay) el.classList.add('selected')
+        renderTable(selectedCalDay
+          ? filteredTrades().filter(t => t.dateKey === selectedCalDay)
+          : filteredTrades()
+        )
+      })
     }
+
+    if (selectedCalDay === key) el.classList.add('selected')
 
     grid.appendChild(el)
 
@@ -1386,12 +1402,16 @@ document.getElementById('folderInput').addEventListener('change', e => {
 document.getElementById('calPrev').addEventListener('click', () => {
   calMonth--
   if (calMonth < 0) { calMonth = 11; calYear-- }
+  selectedCalDay = null
   renderCalendar(filteredTrades())
+  renderTable(filteredTrades())
 })
 document.getElementById('calNext').addEventListener('click', () => {
   calMonth++
   if (calMonth > 11) { calMonth = 0; calYear++ }
+  selectedCalDay = null
   renderCalendar(filteredTrades())
+  renderTable(filteredTrades())
 })
 
 // ── Daily Checklist Modal ────────────────────────────────────────────────────

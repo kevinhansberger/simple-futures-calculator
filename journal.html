@@ -1716,6 +1716,8 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
     const raw = []
     for (let i = 0; i < ts.length; i++) {
       if (q.open[i] == null) continue
+      // Only keep candles within our requested window — Yahoo sometimes returns the full day
+      if (ts[i] < from || ts[i] > to) continue
       raw.push({ time: ts[i], open: +q.open[i].toFixed(4), high: +q.high[i].toFixed(4), low: +q.low[i].toFixed(4), close: +q.close[i].toFixed(4) })
     }
     if (raw.length) { candles = raw; break }

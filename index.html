@@ -574,7 +574,7 @@
     const targets = [daily * 1.25, daily, daily / 2, daily / 3, daily / 4]
     const rows = $('strategyBody').rows
 
-    const copyRaw  = parseFloat($('copyTrading').value) || 0
+    const copyRaw  = parseFloat($('copyTrading')?.value) || 0
     const copyMult = copyRaw > 0 ? copyRaw + 1 : 0
     const apyCopy  = copyMult > 0
 
@@ -719,7 +719,7 @@
 
   $('contract').addEventListener('change', calculate)
   $('micros').addEventListener('input', calculate)
-  $('copyTrading').addEventListener('input', calculate)
+  $('copyTrading')?.addEventListener('input', calculate)
   $('price').addEventListener('input', calculate)
 
   // ── Persist Monthly Goal (default 1250) ──
@@ -731,15 +731,10 @@
 
   // ── Persist Copy Trading ──
   const storedCopy = localStorage.getItem('copyTrading')
-  if (storedCopy !== null) $('copyTrading').value = storedCopy
-  $('copyTrading').addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
-  $('copyTrading').addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+  if (storedCopy !== null && $('copyTrading')) $('copyTrading').value = storedCopy
+  $('copyTrading')?.addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+  $('copyTrading')?.addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
 
-  // ── Wire all inputs ──
-  ['monthlyGoal','micros','contract','price','copyTrading'].forEach(id => {
-    $(id).addEventListener('input', calculate)
-    $(id).addEventListener('change', calculate)
-  })
 
 
   // ── Service worker ──
@@ -755,7 +750,7 @@
     const elNetPnl = document.getElementById('jsNetPnl')
     const elWeek   = document.getElementById('jsWeek')
     const elWinPct = document.getElementById('jsWinPct')
-    if (!elNetPnl || !elWeek || !elWinPct) return
+    if (!elNetPnl || !elWeek || !elWinPct) { console.warn('[stats] elements not found'); return }
 
     const fmtD = n => {
       const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -768,8 +763,10 @@
     }
 
     let trades = [], balances = {}
-    try { trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1'))   || [] } catch {}
-    try { balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {} } catch {}
+    try { trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1'))   || [] } catch(e) { console.warn('[stats] trades parse error', e) }
+    try { balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {} } catch(e) { console.warn('[stats] balances parse error', e) }
+
+    console.log('[stats] trades:', trades.length, '| balances:', balances, '| raw key:', localStorage.getItem('jrnl_trades_v1') ? 'present' : 'MISSING')
 
     if (!trades.length) {
       paint(elNetPnl, '—', true)
@@ -799,11 +796,20 @@
     const wins   = trades.filter(t => t.pnl > 0).length
     const winPct = trades.length ? (wins / trades.length * 100) : null
 
+    console.log('[stats] net:', net, '| weekPnl:', weekPnl, '| winPct:', winPct)
+
     paint(elNetPnl, fmtD(net),    tradePnl >= 0)
     paint(elWeek,   fmtD(weekPnl), weekPnl >= 0)
     paint(elWinPct, winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct !== null && winPct >= 50)
   }
   loadJournalStats()
+
+  // Refresh stats when returning to this tab/page (e.g. after importing in Journal)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadJournalStats()
+  })
+  window.addEventListener('pageshow', () => loadJournalStats())
+  window.addEventListener('focus', () => loadJournalStats())
 
   // ── Init ──
   setDirection('b')

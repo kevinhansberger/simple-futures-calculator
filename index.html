@@ -752,46 +752,56 @@
 
   // ── Journal stats ──
   function loadJournalStats() {
-    try {
-      const trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1')) || []
-      const balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {}
+    const elNetPnl = document.getElementById('jsNetPnl')
+    const elWeek   = document.getElementById('jsWeek')
+    const elWinPct = document.getElementById('jsWinPct')
+    if (!elNetPnl || !elWeek || !elWinPct) return
 
-      if (!trades.length) return
+    const fmtD = n => {
+      const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      return (n < 0 ? '-$' : '$') + abs
+    }
 
-      // Net P&L = all initial balances + all trade P&L
-      const allAccts      = [...new Set(trades.map(t => t.account))]
-      const initialBal    = allAccts.reduce((s, a) => s + (balances[a] || 0), 0)
-      const tradePnl      = trades.reduce((s, t) => s + t.pnl, 0)
-      const net           = initialBal + tradePnl
+    const paint = (el, val, isPos) => {
+      el.textContent = val
+      el.className = 'jrnl-stat-value' + (val === '—' ? '' : isPos ? ' pos' : ' neg')
+    }
 
-      // Current week (Sun → Sat)
-      const now     = new Date()
-      const dow     = now.getDay() // 0=Sun
-      const weekStart = new Date(now); weekStart.setHours(0,0,0,0); weekStart.setDate(now.getDate() - dow)
-      const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7)
-      const weekPnl   = trades
-        .filter(t => { const d = new Date(t.boughtTS); return d >= weekStart && d < weekEnd })
-        .reduce((s, t) => s + t.pnl, 0)
+    let trades = [], balances = {}
+    try { trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1'))   || [] } catch {}
+    try { balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {} } catch {}
 
-      // Trade win %
-      const wins   = trades.filter(t => t.pnl > 0).length
-      const winPct = trades.length ? (wins / trades.length * 100) : null
+    if (!trades.length) {
+      paint(elNetPnl, '—', true)
+      paint(elWeek,   '—', true)
+      paint(elWinPct, '—', true)
+      return
+    }
 
-      const fmtD = n => {
-        const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        return (n < 0 ? '-$' : '$') + abs
-      }
+    // Net P&L = all initial balances + all trade P&L
+    const allAccts  = [...new Set(trades.map(t => t.account))]
+    const initBal   = allAccts.reduce((s, a) => s + (balances[a] || 0), 0)
+    const tradePnl  = trades.reduce((s, t) => s + t.pnl, 0)
+    const net       = initBal + tradePnl
 
-      const setEl = (id, val, pos) => {
-        const el = $( id)
-        el.textContent = val
-        el.className = 'jrnl-stat-value' + (val === '—' ? '' : pos ? ' pos' : ' neg')
-      }
+    // Current week P&L (Sun → Sat)
+    const now       = new Date()
+    const wkStart   = new Date(now)
+    wkStart.setHours(0, 0, 0, 0)
+    wkStart.setDate(now.getDate() - now.getDay())
+    const wkEnd     = new Date(wkStart)
+    wkEnd.setDate(wkStart.getDate() + 7)
+    const weekPnl   = trades
+      .filter(t => { const d = new Date(t.boughtTS); return d >= wkStart && d < wkEnd })
+      .reduce((s, t) => s + t.pnl, 0)
 
-      setEl('jsNetPnl', fmtD(net),    tradePnl >= 0)
-      setEl('jsWeek',   fmtD(weekPnl), weekPnl >= 0)
-      setEl('jsWinPct', winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct >= 50)
-    } catch(e) { console.warn('Journal stats error:', e) }
+    // Trade Win %
+    const wins   = trades.filter(t => t.pnl > 0).length
+    const winPct = trades.length ? (wins / trades.length * 100) : null
+
+    paint(elNetPnl, fmtD(net),    tradePnl >= 0)
+    paint(elWeek,   fmtD(weekPnl), weekPnl >= 0)
+    paint(elWinPct, winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct !== null && winPct >= 50)
   }
   loadJournalStats()
 

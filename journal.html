@@ -1578,118 +1578,112 @@ function openTradeChart(trade) {
   fetchAndRenderChart(trade, container, ph, phMsg)
 }
 
+const CHART_OPTS = {
+  autoSize: true,
+  height: 340,
+  layout: {
+    background: { type: 'solid', color: '#0d1117' },
+    textColor: '#e0e0e0',
+  },
+  grid: { vertLines: { color: '#1e1e3a' }, horzLines: { color: '#1e1e3a' } },
+  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  rightPriceScale: { borderColor: '#2a2a4a' },
+  timeScale: { borderColor: '#2a2a4a', timeVisible: true, secondsVisible: false },
+}
+
+function showChart(container, ph) {
+  ph.style.display = 'none'
+  container.style.display = 'block'
+  tcChart = LightweightCharts.createChart(container, CHART_OPTS)
+}
+
+function addMarkersAndLines(series, trade, candles) {
+  const LS = LightweightCharts.LineStyle
+  const exitColor = trade.pnl >= 0 ? '#00d4aa' : '#e94560'
+  series.createPriceLine({ price: trade.entry, color: '#00d4aa', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Entry' })
+  series.createPriceLine({ price: trade.exit,  color: exitColor,  lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Exit'  })
+
+  const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
+  const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
+  const snap = ts => candles.reduce((p, c) => Math.abs(c.time - ts) < Math.abs(p.time - ts) ? c : p).time
+
+  series.setMarkers([
+    { time: snap(entryTs), position: trade.side === 'Long' ? 'belowBar' : 'aboveBar',
+      color: trade.side === 'Long' ? '#00d4aa' : '#e94560',
+      shape: trade.side === 'Long' ? 'arrowUp' : 'arrowDown',
+      text: `Entry @ ${trade.entry.toFixed(2)}` },
+    { time: snap(exitTs),  position: trade.side === 'Long' ? 'aboveBar' : 'belowBar',
+      color: exitColor,
+      shape: trade.side === 'Long' ? 'arrowDown' : 'arrowUp',
+      text: `Exit @ ${trade.exit.toFixed(2)}` },
+  ])
+}
+
+function renderFallbackChart(trade, container, ph, phMsg) {
+  // No market data — show a simple entry→exit line with markers
+  showChart(container, ph)
+  phMsg.textContent = ''
+
+  const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
+  const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
+  // Need at least 2 distinct timestamps for LW charts
+  const t2 = exitTs > entryTs ? exitTs : entryTs + 60
+
+  const lineColor = trade.pnl >= 0 ? '#00d4aa' : '#e94560'
+  const series = tcChart.addLineSeries({ color: lineColor, lineWidth: 2, priceLineVisible: false })
+  const pts = [{ time: entryTs, value: trade.entry }, { time: t2, value: trade.exit }]
+  series.setData(pts)
+  addMarkersAndLines(series, trade, pts)
+  tcChart.timeScale().fitContent()
+
+  // Label so user knows this isn't real market data
+  document.getElementById('tcSub').textContent +=  ' · entry→exit only (market data unavailable)'
+}
+
 async function fetchAndRenderChart(trade, container, ph, phMsg) {
-  try {
-    const yahooSym = toYahooSymbol(trade.symbol)
-    const durationMs = new Date(trade.soldTS) - new Date(trade.boughtTS)
-    const buffer = Math.max(durationMs * 0.3, 20 * 60 * 1000) // 30% or 20 min
-    const interval = durationMs < 30*60*1000 ? '1m' : durationMs < 3*60*60*1000 ? '5m' : '15m'
-    const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
-    const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
+  const yahooSym   = toYahooSymbol(trade.symbol)
+  const encodedSym = encodeURIComponent(yahooSym)
+  const durationMs = new Date(trade.soldTS) - new Date(trade.boughtTS)
+  const buffer     = Math.max(durationMs * 0.3, 20 * 60 * 1000)
+  const interval   = durationMs < 30*60*1000 ? '1m' : durationMs < 3*60*60*1000 ? '5m' : '15m'
+  const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
+  const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=${interval}&period1=${from}&period2=${to}&includePrePost=true`
-    const resp = await fetch(url)
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const json = await resp.json()
-
-    const result = json?.chart?.result?.[0]
-    if (!result) throw new Error('No data')
-
-    const timestamps = result.timestamp || []
-    const q = result.indicators?.quote?.[0] || {}
-    if (!timestamps.length) throw new Error('Empty')
-
-    // Build candle data (filter out nulls)
-    const candles = []
-    for (let i = 0; i < timestamps.length; i++) {
-      if (q.open[i] == null) continue
-      candles.push({
-        time:  timestamps[i],
-        open:  +q.open[i].toFixed(4),
-        high:  +q.high[i].toFixed(4),
-        low:   +q.low[i].toFixed(4),
-        close: +q.close[i].toFixed(4),
-      })
-    }
-    if (!candles.length) throw new Error('No valid candles')
-
-    // Build chart
-    ph.style.display = 'none'
-    container.style.display = 'block'
-
-    tcChart = LightweightCharts.createChart(container, {
-      width:  container.clientWidth,
-      height: 340,
-      layout: {
-        background: { type: 'solid', color: '#0d1117' },
-        textColor: '#e0e0e0',
-      },
-      grid: {
-        vertLines: { color: '#1e1e3a' },
-        horzLines: { color: '#1e1e3a' },
-      },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-      rightPriceScale: { borderColor: '#2a2a4a' },
-      timeScale: {
-        borderColor: '#2a2a4a',
-        timeVisible: true,
-        secondsVisible: false,
-        fixLeftEdge: true,
-        fixRightEdge: true,
-      },
-    })
-
-    const series = tcChart.addCandlestickSeries({
-      upColor:          '#00d4aa',
-      downColor:        '#e94560',
-      borderUpColor:    '#00d4aa',
-      borderDownColor:  '#e94560',
-      wickUpColor:      '#00d4aa',
-      wickDownColor:    '#e94560',
-    })
-    series.setData(candles)
-
-    // Entry / exit price lines
-    const LS = LightweightCharts.LineStyle
-    series.createPriceLine({ price: trade.entry, color: '#00d4aa', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Entry' })
-    series.createPriceLine({ price: trade.exit,  color: trade.pnl >= 0 ? '#00d4aa' : '#e94560', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Exit' })
-
-    // Entry / exit markers
-    const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
-    const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
-    // Snap markers to nearest candle time
-    const snap = ts => candles.reduce((prev, c) => Math.abs(c.time - ts) < Math.abs(prev.time - ts) ? c : prev).time
-
-    series.setMarkers([
-      {
-        time:     snap(entryTs),
-        position: trade.side === 'Long' ? 'belowBar' : 'aboveBar',
-        color:    trade.side === 'Long' ? '#00d4aa' : '#e94560',
-        shape:    trade.side === 'Long' ? 'arrowUp'  : 'arrowDown',
-        text:     `Entry @ ${trade.entry.toFixed(2)}`,
-      },
-      {
-        time:     snap(exitTs),
-        position: trade.side === 'Long' ? 'aboveBar' : 'belowBar',
-        color:    trade.pnl >= 0 ? '#00d4aa' : '#e94560',
-        shape:    trade.side === 'Long' ? 'arrowDown' : 'arrowUp',
-        text:     `Exit @ ${trade.exit.toFixed(2)}`,
-      },
-    ])
-
-    tcChart.timeScale().fitContent()
-
-    // Handle resize
-    const ro = new ResizeObserver(() => {
-      if (tcChart) tcChart.applyOptions({ width: container.clientWidth })
-    })
-    ro.observe(container)
-
-  } catch (err) {
-    ph.style.display = 'flex'
-    container.style.display = 'none'
-    phMsg.textContent = `Chart unavailable — ${err.message === 'Failed to fetch' ? 'network error or symbol not found' : 'no data for this symbol/date'}`
+  // Try query2 then query1 (Yahoo Finance sometimes differs by host)
+  let candles = null
+  for (const host of ['query2', 'query1']) {
+    try {
+      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodedSym}?interval=${interval}&period1=${from}&period2=${to}`
+      const resp = await fetch(url)
+      if (!resp.ok) continue
+      const json = await resp.json()
+      const result = json?.chart?.result?.[0]
+      const ts = result?.timestamp || []
+      const q  = result?.indicators?.quote?.[0] || {}
+      const raw = []
+      for (let i = 0; i < ts.length; i++) {
+        if (q.open[i] == null) continue
+        raw.push({ time: ts[i], open: +q.open[i].toFixed(4), high: +q.high[i].toFixed(4), low: +q.low[i].toFixed(4), close: +q.close[i].toFixed(4) })
+      }
+      if (raw.length) { candles = raw; break }
+    } catch { /* try next */ }
   }
+
+  if (!candles) {
+    // Market data unavailable — fall back to simple entry/exit line
+    renderFallbackChart(trade, container, ph, phMsg)
+    return
+  }
+
+  showChart(container, ph)
+  const series = tcChart.addCandlestickSeries({
+    upColor: '#00d4aa', downColor: '#e94560',
+    borderUpColor: '#00d4aa', borderDownColor: '#e94560',
+    wickUpColor: '#00d4aa', wickDownColor: '#e94560',
+  })
+  series.setData(candles)
+  addMarkersAndLines(series, trade, candles)
+  tcChart.timeScale().fitContent()
 }
 
 document.getElementById('tcClose').addEventListener('click', () => {

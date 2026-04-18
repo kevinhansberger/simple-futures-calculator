@@ -321,6 +321,7 @@
     .price-box.sl1 .price-box-value   { color: var(--sell); }
     .price-box.sl2 .price-box-value   { color: var(--sell); }
 
+
     .price-box.no-price .price-box-value { color: var(--text-dim); }
 
     @media (max-width: 560px) {
@@ -349,6 +350,7 @@
     <div class="card-title">Start</div>
     <div class="input-grid">
 
+      <!-- Row 1: ATR | Risk (2×ATR, readonly) -->
       <div class="input-group">
         <label for="micros">ATR</label>
         <input type="number" id="micros" value="20" min="1" inputmode="numeric">
@@ -359,6 +361,7 @@
         <input type="number" id="riskDisplay" readonly tabindex="-1">
       </div>
 
+      <!-- Row 2: Direction | Ticker -->
       <div class="input-group">
         <label>Direction</label>
         <div class="dir-toggle">
@@ -376,6 +379,7 @@
         </select>
       </div>
 
+      <!-- Row 3: Entry Price | Copy Trading Accounts -->
       <div class="input-group">
         <label for="price">Entry Price</label>
         <div class="price-input-wrap">
@@ -444,11 +448,11 @@
           </tr>
         </thead>
         <tbody id="strategyBody">
-          <tr><td>A+ (NY AVWAP)</td>  <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>A (NY AVWAP)</td>   <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
-          <tr><td>B+ (KEY LEVEL)</td> <td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
-          <tr><td>B (KEY LEVEL)</td>  <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
-          <tr><td>SCALP</td>          <td class="target" id="tgt4">—</td><td class="qty" id="qty4">—</td><td class="tp" id="tp14">—</td><td class="sl" id="sl14">—</td><td class="sl2" id="sl24">—</td><td class="tp" id="tp24">—</td></tr>
+          <tr><td>A+ (NY AVWAP)</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>B+ (KEY LEVEL)</td>   <td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
+          <tr><td>B (KEY LEVEL)</td>    <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+          <tr><td>SCALP</td><td class="target" id="tgt4">—</td><td class="qty" id="qty4">—</td><td class="tp" id="tp14">—</td><td class="sl" id="sl14">—</td><td class="sl2" id="sl24">—</td><td class="tp" id="tp24">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -487,6 +491,7 @@
 
   // ── Helpers ──
   const $ = id => document.getElementById(id)
+  const fmt   = n => n === '' || n === null ? '—' : typeof n === 'number' ? n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : n
   const fmtC  = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtP  = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
@@ -569,10 +574,11 @@
 
       document.querySelectorAll('.price-box').forEach(b => b.classList.remove('no-price'))
     } else {
-      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $(id).textContent = '—')
+      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $( id).textContent = '—')
       document.querySelectorAll('.price-box').forEach(b => b.classList.add('no-price'))
     }
 
+    // Re-apply selected strategy numbers if one is active
     if (selectedStratIndex >= 0) {
       const row = $('strategyBody').rows[selectedStratIndex]
       if (row) applyStratFocus(row, selectedStratIndex)
@@ -635,6 +641,7 @@
     $('stratTp2').textContent = hasTp2 ? $('tp2' + i).textContent : ''
     $('stratSl2').textContent = hasSl2 ? $('sl2' + i).textContent : ''
 
+    // Hide price values for levels the strategy doesn't use
     $('outTp2').closest('.price-box').style.opacity = hasTp2 ? '' : '0.15'
     $('outSl2').closest('.price-box').style.opacity = hasSl2 ? '' : '0.15'
     updateEntryQtyBadge()
@@ -649,16 +656,18 @@
   })
 
   // ── Hotkeys ──
+  // b = BUY, s = SELL, Esc = reset strategy focus
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { clearStratFocus(); return }
     if (e.key === 'x' || e.key === 'X') { e.preventDefault(); document.activeElement.blur(); return }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
 
     const key = e.key.toLowerCase()
+
     if (key === 'b') setDirection('b')
     if (key === 's') setDirection('s')
     if (key === 'e') { e.preventDefault(); const el = $('price'); el.value = ''; el.focus(); calculate() }
-    if (key === 'a') { const el = $('micros'); el.focus(); el.select() }
+    if (key === 'a') { const el = $('micros');  el.focus(); el.select() }
     if (key === 't') { $('contract').focus() }
   })
 
@@ -667,9 +676,10 @@
   $('copyTrading').addEventListener('input', calculate)
   $('price').addEventListener('input', calculate)
 
-  // ── Persist Monthly Goal ──
+  // ── Persist Monthly Goal (default 1250) ──
   const stored = localStorage.getItem('monthlyGoal')
   $('monthlyGoal').value = stored !== null ? stored : '1250'
+  calculate() // run immediately so targets show on first paint
   $('monthlyGoal').addEventListener('input', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
   $('monthlyGoal').addEventListener('change', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
 
@@ -678,6 +688,13 @@
   if (storedCopy !== null) $('copyTrading').value = storedCopy
   $('copyTrading').addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
   $('copyTrading').addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+
+  // ── Wire all inputs ──
+  ['monthlyGoal','micros','contract','price','copyTrading'].forEach(id => {
+    $(id).addEventListener('input', calculate)
+    $(id).addEventListener('change', calculate)
+  })
+
 
   // ── Service worker ──
   if ('serviceWorker' in navigator) {

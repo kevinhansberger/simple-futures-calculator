@@ -587,6 +587,10 @@
 
   <!-- Charts -->
   <div class="charts-grid">
+    <div class="card chart-full">
+      <div class="card-header">Cumulative P&amp;L</div>
+      <div class="card-body"><canvas id="chartCumPnl" height="120"></canvas></div>
+    </div>
     <div class="card">
       <div class="card-header">Trade Time of Day</div>
       <div class="card-body"><canvas id="chartTimeScatter" height="180"></canvas></div>
@@ -671,7 +675,7 @@ let calYear     = new Date().getFullYear()
 let calMonth    = new Date().getMonth() // 0-indexed
 
 // Chart instances
-let chartTime, chartDur
+let chartCum, chartTime, chartDur
 
 // ── Load persisted trades ────────────────────────────────────────────────────
 function loadFromStorage() {
@@ -842,27 +846,16 @@ function buildAccountChips() {
   trashBtn.style.cssText = 'background:none;border:none;color:#888;cursor:pointer;padding:2px 4px;display:flex;align-items:center;flex-shrink:0;margin-left:auto;'
   trashBtn.addEventListener('mouseenter', () => trashBtn.style.color = '#e94560')
   trashBtn.addEventListener('mouseleave', () => trashBtn.style.color = '#888')
-  trashBtn.addEventListener('click', async e => {
+  trashBtn.addEventListener('click', e => {
     e.stopPropagation()
-    if (!confirm('Clear all data and cache for this site? This cannot be undone.')) return
-
-    // Clear all localStorage
-    localStorage.clear()
-
-    // Clear all service worker caches
-    if ('caches' in window) {
-      const keys = await caches.keys()
-      await Promise.all(keys.map(k => caches.delete(k)))
-    }
-
-    // Unregister service workers
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations()
-      await Promise.all(regs.map(r => r.unregister()))
-    }
-
-    // Reload fresh
-    window.location.reload()
+    if (!confirm('Clear all trade data? This cannot be undone.')) return
+    allTrades = []
+    activeAccts = new Set(['all'])
+    saveToStorage()
+    acctMenu.classList.remove('open')
+    acctBtn.classList.remove('open')
+    buildAccountChips()
+    renderAll()
   })
   const syncBtn = document.createElement('button')
   syncBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/></svg>`
@@ -1205,7 +1198,36 @@ function renderTable(trades) {
 function renderCharts(trades) {
   const sorted = [...trades].sort((a,b) => a.boughtTS.localeCompare(b.boughtTS))
 
-  // 1. Trade time scatter (hour of day vs P&L)
+  // 1. Cumulative P&L
+  const cumLabels = []
+  const cumData   = []
+  let running = 0
+  for (const t of sorted) {
+    running += t.pnl
+    const d = new Date(t.boughtTS)
+    cumLabels.push(`${d.getMonth()+1}/${d.getDate()}`)
+    cumData.push(+running.toFixed(2))
+  }
+
+  destroyChart('chartCum', chartCum)
+  chartCum = new Chart(document.getElementById('chartCumPnl'), {
+    type: 'line',
+    data: {
+      labels: cumLabels,
+      datasets: [{
+        data: cumData,
+        borderColor: '#00d4aa',
+        backgroundColor: 'rgba(0,212,170,.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: cumData.length > 60 ? 0 : 3,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: chartOpts({ dollar: true })
+  })
+
+  // 2. Trade time scatter (hour of day vs P&L)
   const timePoints = sorted.map(t => {
     const d = new Date(t.boughtTS)
     const hour = d.getHours() + d.getMinutes() / 60
@@ -1398,20 +1420,9 @@ const checklistEdit     = document.getElementById('checklistEdit')
 const checklistSave     = document.getElementById('checklistSave')
 const checklistCancel   = document.getElementById('checklistCancel')
 
-const DEFAULT_ROUTINE = `• Mark RTH Gaps
-• Mark Killzone Liquidity Levels
-• Mark Liquidity Blocks
-• Mark Timeframe Levels
-• Set Key Levels
-• Journal Day's Trades`
-
-const DEFAULT_RULES = `• 2 losing trades = Stop for the day
-• 2 A+ winning trades = Stop for the day
-• If close to weekly goal on Friday = Full Stop at Weekly Goal`
-
 function loadChecklist() {
-  const routine = localStorage.getItem(ROUTINE_KEY) ?? DEFAULT_ROUTINE
-  const rules   = localStorage.getItem(RULES_KEY)   ?? DEFAULT_RULES
+  const routine = localStorage.getItem(ROUTINE_KEY) || ''
+  const rules   = localStorage.getItem(RULES_KEY)   || ''
   routineDisplay.textContent  = routine
   rulesDisplay.textContent    = rules
   routineTextarea.value       = routine
@@ -1462,7 +1473,6 @@ loadBalances()
 activeAccts = new Set(['all'])
 buildAccountChips()
 renderAll()
-
 </script>
 </body>
 </html>

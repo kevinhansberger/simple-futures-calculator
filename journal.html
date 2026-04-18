@@ -1640,6 +1640,25 @@ function renderFallbackChart(trade, container, ph, phMsg) {
   document.getElementById('tcSub').textContent +=  ' · entry→exit only (market data unavailable)'
 }
 
+async function fetchYahoo(url) {
+  // 1. Direct request (works in some browsers/regions)
+  try {
+    const r = await fetch(url)
+    if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
+  } catch {}
+  // 2. Via corsproxy.io (bypasses CORS restrictions)
+  try {
+    const r = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`)
+    if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
+  } catch {}
+  // 3. Via allorigins (second proxy fallback)
+  try {
+    const r = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`)
+    if (r.ok) { const j = await r.json(); if (j?.chart?.result) return j }
+  } catch {}
+  return null
+}
+
 async function fetchAndRenderChart(trade, container, ph, phMsg) {
   const yahooSym   = toYahooSymbol(trade.symbol)
   const encodedSym = encodeURIComponent(yahooSym)
@@ -1649,28 +1668,23 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
   const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
   const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
 
-  // Try query2 then query1 (Yahoo Finance sometimes differs by host)
   let candles = null
   for (const host of ['query2', 'query1']) {
-    try {
-      const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodedSym}?interval=${interval}&period1=${from}&period2=${to}`
-      const resp = await fetch(url)
-      if (!resp.ok) continue
-      const json = await resp.json()
-      const result = json?.chart?.result?.[0]
-      const ts = result?.timestamp || []
-      const q  = result?.indicators?.quote?.[0] || {}
-      const raw = []
-      for (let i = 0; i < ts.length; i++) {
-        if (q.open[i] == null) continue
-        raw.push({ time: ts[i], open: +q.open[i].toFixed(4), high: +q.high[i].toFixed(4), low: +q.low[i].toFixed(4), close: +q.close[i].toFixed(4) })
-      }
-      if (raw.length) { candles = raw; break }
-    } catch { /* try next */ }
+    const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodedSym}?interval=${interval}&period1=${from}&period2=${to}`
+    const json = await fetchYahoo(url)
+    if (!json) continue
+    const result = json.chart.result[0]
+    const ts = result?.timestamp || []
+    const q  = result?.indicators?.quote?.[0] || {}
+    const raw = []
+    for (let i = 0; i < ts.length; i++) {
+      if (q.open[i] == null) continue
+      raw.push({ time: ts[i], open: +q.open[i].toFixed(4), high: +q.high[i].toFixed(4), low: +q.low[i].toFixed(4), close: +q.close[i].toFixed(4) })
+    }
+    if (raw.length) { candles = raw; break }
   }
 
   if (!candles) {
-    // Market data unavailable — fall back to simple entry/exit line
     renderFallbackChart(trade, container, ph, phMsg)
     return
   }

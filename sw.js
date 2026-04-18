@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tofx3-v4'
+const CACHE_NAME = 'tofx3-v2'
 const ASSETS = [
   './',
   './index.html',
@@ -27,33 +27,8 @@ self.addEventListener('activate', event => {
 })
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return
-
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME)
-
-    // For navigate requests, match by pathname so index/journal always come from cache
-    if (event.request.mode === 'navigate') {
-      const url = new URL(event.request.url)
-      const path = url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname
-      const key  = url.origin + path
-      const hit  = await cache.match(key) || await cache.match(url.origin + url.pathname)
-      if (hit) return hit
-    }
-
-    // Cache-first for everything else
-    const cached = await cache.match(event.request)
-    if (cached) return cached
-
-    try {
-      const response = await fetch(event.request)
-      if (response.ok) cache.put(event.request, response.clone())
-      return response
-    } catch {
-      // Offline fallback for navigation
-      if (event.request.mode === 'navigate') {
-        return cache.match('./index.html')
-      }
-    }
-  })())
+  event.respondWith(
+    caches.match(event.request)
+      .then(cached => cached || fetch(event.request))
+  )
 })

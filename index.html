@@ -86,36 +86,6 @@
       padding: 14px;
     }
 
-    /* ── Journal Stats Row ── */
-    .jrnl-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .jrnl-stat {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 10px;
-      text-align: center;
-    }
-    .jrnl-stat-label {
-      font-size: .68rem;
-      font-weight: 700;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-    }
-    .jrnl-stat-value {
-      font-family: "Courier New", monospace;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .jrnl-stat-value.pos { color: var(--buy); }
-    .jrnl-stat-value.neg { color: var(--sell); }
-
     .card-title {
       font-size: 0.7rem;
       font-weight: 700;
@@ -351,7 +321,6 @@
     .price-box.sl1 .price-box-value   { color: var(--sell); }
     .price-box.sl2 .price-box-value   { color: var(--sell); }
 
-
     .price-box.no-price .price-box-value { color: var(--text-dim); }
 
     @media (max-width: 560px) {
@@ -375,28 +344,11 @@
 
 <main>
 
-  <!-- JOURNAL STATS -->
-  <div class="jrnl-stats">
-    <div class="jrnl-stat">
-      <div class="jrnl-stat-label">Net P&amp;L</div>
-      <div class="jrnl-stat-value" id="jsNetPnl">—</div>
-    </div>
-    <div class="jrnl-stat">
-      <div class="jrnl-stat-label">Week</div>
-      <div class="jrnl-stat-value" id="jsWeek">—</div>
-    </div>
-    <div class="jrnl-stat">
-      <div class="jrnl-stat-label">Trade Win %</div>
-      <div class="jrnl-stat-value" id="jsWinPct">—</div>
-    </div>
-  </div>
-
   <!-- INPUTS -->
   <div class="card">
     <div class="card-title">Start</div>
     <div class="input-grid">
 
-      <!-- Row 1: ATR | Risk (2×ATR, readonly) -->
       <div class="input-group">
         <label for="micros">ATR</label>
         <input type="number" id="micros" value="20" min="1" inputmode="numeric">
@@ -407,7 +359,6 @@
         <input type="number" id="riskDisplay" readonly tabindex="-1">
       </div>
 
-      <!-- Row 2: Direction | Ticker -->
       <div class="input-group">
         <label>Direction</label>
         <div class="dir-toggle">
@@ -425,7 +376,6 @@
         </select>
       </div>
 
-      <!-- Row 3: Entry Price | Copy Trading Accounts -->
       <div class="input-group">
         <label for="price">Entry Price</label>
         <div class="price-input-wrap">
@@ -494,11 +444,11 @@
           </tr>
         </thead>
         <tbody id="strategyBody">
-          <tr><td>A+ (NY AVWAP)</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
-          <tr><td>B+ (KEY LEVEL)</td>   <td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
-          <tr><td>B (KEY LEVEL)</td>    <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
-          <tr><td>SCALP</td><td class="target" id="tgt4">—</td><td class="qty" id="qty4">—</td><td class="tp" id="tp14">—</td><td class="sl" id="sl14">—</td><td class="sl2" id="sl24">—</td><td class="tp" id="tp24">—</td></tr>
+          <tr><td>A+ (NY AVWAP)</td>  <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>A (NY AVWAP)</td>   <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>B+ (KEY LEVEL)</td> <td class="target" id="tgt2">—</td><td class="qty" id="qty2">—</td><td class="tp" id="tp12">—</td><td class="sl" id="sl12">—</td><td class="sl2" id="sl22">—</td><td class="tp" id="tp22">—</td></tr>
+          <tr><td>B (KEY LEVEL)</td>  <td class="target" id="tgt3">—</td><td class="qty" id="qty3">—</td><td class="tp" id="tp13">—</td><td class="sl" id="sl13">—</td><td class="sl2" id="sl23">—</td><td class="tp" id="tp23">—</td></tr>
+          <tr><td>SCALP</td>          <td class="target" id="tgt4">—</td><td class="qty" id="qty4">—</td><td class="tp" id="tp14">—</td><td class="sl" id="sl14">—</td><td class="sl2" id="sl24">—</td><td class="tp" id="tp24">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -537,7 +487,6 @@
 
   // ── Helpers ──
   const $ = id => document.getElementById(id)
-  const fmt   = n => n === '' || n === null ? '—' : typeof n === 'number' ? n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : n
   const fmtC  = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const fmtP  = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
@@ -574,7 +523,7 @@
     const targets = [daily * 1.25, daily, daily / 2, daily / 3, daily / 4]
     const rows = $('strategyBody').rows
 
-    const copyRaw  = parseFloat($('copyTrading')?.value) || 0
+    const copyRaw  = parseFloat($('copyTrading').value) || 0
     const copyMult = copyRaw > 0 ? copyRaw + 1 : 0
     const apyCopy  = copyMult > 0
 
@@ -620,11 +569,10 @@
 
       document.querySelectorAll('.price-box').forEach(b => b.classList.remove('no-price'))
     } else {
-      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $( id).textContent = '—')
+      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $(id).textContent = '—')
       document.querySelectorAll('.price-box').forEach(b => b.classList.add('no-price'))
     }
 
-    // Re-apply selected strategy numbers if one is active
     if (selectedStratIndex >= 0) {
       const row = $('strategyBody').rows[selectedStratIndex]
       if (row) applyStratFocus(row, selectedStratIndex)
@@ -687,7 +635,6 @@
     $('stratTp2').textContent = hasTp2 ? $('tp2' + i).textContent : ''
     $('stratSl2').textContent = hasSl2 ? $('sl2' + i).textContent : ''
 
-    // Hide price values for levels the strategy doesn't use
     $('outTp2').closest('.price-box').style.opacity = hasTp2 ? '' : '0.15'
     $('outSl2').closest('.price-box').style.opacity = hasSl2 ? '' : '0.15'
     updateEntryQtyBadge()
@@ -702,40 +649,35 @@
   })
 
   // ── Hotkeys ──
-  // b = BUY, s = SELL, Esc = reset strategy focus
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { clearStratFocus(); return }
     if (e.key === 'x' || e.key === 'X') { e.preventDefault(); document.activeElement.blur(); return }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return
 
     const key = e.key.toLowerCase()
-
     if (key === 'b') setDirection('b')
     if (key === 's') setDirection('s')
     if (key === 'e') { e.preventDefault(); const el = $('price'); el.value = ''; el.focus(); calculate() }
-    if (key === 'a') { const el = $('micros');  el.focus(); el.select() }
+    if (key === 'a') { const el = $('micros'); el.focus(); el.select() }
     if (key === 't') { $('contract').focus() }
   })
 
   $('contract').addEventListener('change', calculate)
   $('micros').addEventListener('input', calculate)
-  $('copyTrading')?.addEventListener('input', calculate)
+  $('copyTrading').addEventListener('input', calculate)
   $('price').addEventListener('input', calculate)
 
-  // ── Persist Monthly Goal (default 1250) ──
+  // ── Persist Monthly Goal ──
   const stored = localStorage.getItem('monthlyGoal')
   $('monthlyGoal').value = stored !== null ? stored : '1250'
-  calculate() // run immediately so targets show on first paint
   $('monthlyGoal').addEventListener('input', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
   $('monthlyGoal').addEventListener('change', () => { localStorage.setItem('monthlyGoal', $('monthlyGoal').value); calculate() })
 
   // ── Persist Copy Trading ──
   const storedCopy = localStorage.getItem('copyTrading')
-  if (storedCopy !== null && $('copyTrading')) $('copyTrading').value = storedCopy
-  $('copyTrading')?.addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
-  $('copyTrading')?.addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
-
-
+  if (storedCopy !== null) $('copyTrading').value = storedCopy
+  $('copyTrading').addEventListener('input', () => localStorage.setItem('copyTrading', $('copyTrading').value))
+  $('copyTrading').addEventListener('change', () => localStorage.setItem('copyTrading', $('copyTrading').value))
 
   // ── Service worker ──
   if ('serviceWorker' in navigator) {
@@ -743,77 +685,7 @@
       navigator.serviceWorker.register('./sw.js')
         .catch(err => console.warn('SW:', err))
     })
-    // When SW first takes control, reload so all navigations go through cache
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload()
-    })
   }
-
-  // ── Journal stats ──
-  function loadJournalStats() {
-    const elNetPnl = document.getElementById('jsNetPnl')
-    const elWeek   = document.getElementById('jsWeek')
-    const elWinPct = document.getElementById('jsWinPct')
-    if (!elNetPnl || !elWeek || !elWinPct) { console.warn('[stats] elements not found'); return }
-
-    const fmtD = n => {
-      const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      return (n < 0 ? '-$' : '$') + abs
-    }
-
-    const paint = (el, val, isPos) => {
-      el.textContent = val
-      el.className = 'jrnl-stat-value' + (val === '—' ? '' : isPos ? ' pos' : ' neg')
-    }
-
-    let trades = [], balances = {}
-    try { trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1'))   || [] } catch(e) { console.warn('[stats] trades parse error', e) }
-    try { balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {} } catch(e) { console.warn('[stats] balances parse error', e) }
-
-    console.log('[stats] trades:', trades.length, '| balances:', balances, '| raw key:', localStorage.getItem('jrnl_trades_v1') ? 'present' : 'MISSING')
-
-    if (!trades.length) {
-      paint(elNetPnl, '—', true)
-      paint(elWeek,   '—', true)
-      paint(elWinPct, '—', true)
-      return
-    }
-
-    // Net P&L = all initial balances + all trade P&L
-    const allAccts  = [...new Set(trades.map(t => t.account))]
-    const initBal   = allAccts.reduce((s, a) => s + (balances[a] || 0), 0)
-    const tradePnl  = trades.reduce((s, t) => s + t.pnl, 0)
-    const net       = initBal + tradePnl
-
-    // Current week P&L (Sun → Sat)
-    const now       = new Date()
-    const wkStart   = new Date(now)
-    wkStart.setHours(0, 0, 0, 0)
-    wkStart.setDate(now.getDate() - now.getDay())
-    const wkEnd     = new Date(wkStart)
-    wkEnd.setDate(wkStart.getDate() + 7)
-    const weekPnl   = trades
-      .filter(t => { const d = new Date(t.boughtTS); return d >= wkStart && d < wkEnd })
-      .reduce((s, t) => s + t.pnl, 0)
-
-    // Trade Win %
-    const wins   = trades.filter(t => t.pnl > 0).length
-    const winPct = trades.length ? (wins / trades.length * 100) : null
-
-    console.log('[stats] net:', net, '| weekPnl:', weekPnl, '| winPct:', winPct)
-
-    paint(elNetPnl, fmtD(net),    tradePnl >= 0)
-    paint(elWeek,   fmtD(weekPnl), weekPnl >= 0)
-    paint(elWinPct, winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct !== null && winPct >= 50)
-  }
-  loadJournalStats()
-
-  // Refresh stats when returning to this tab/page (e.g. after importing in Journal)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') loadJournalStats()
-  })
-  window.addEventListener('pageshow', () => loadJournalStats())
-  window.addEventListener('focus', () => loadJournalStats())
 
   // ── Init ──
   setDirection('b')

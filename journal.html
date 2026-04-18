@@ -1463,16 +1463,6 @@ activeAccts = new Set(['all'])
 buildAccountChips()
 renderAll()
 
-// ── Service worker ──
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .catch(err => console.warn('SW:', err))
-  })
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload()
-  })
-}
 </script>
 </body>
 </html>

@@ -86,6 +86,36 @@
       padding: 14px;
     }
 
+    /* ── Journal Stats Row ── */
+    .jrnl-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .jrnl-stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .jrnl-stat-label {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .jrnl-stat-value {
+      font-family: "Courier New", monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .jrnl-stat-value.pos { color: var(--buy); }
+    .jrnl-stat-value.neg { color: var(--sell); }
+
     .card-title {
       font-size: 0.7rem;
       font-weight: 700;
@@ -344,6 +374,22 @@
 </header>
 
 <main>
+
+  <!-- JOURNAL STATS -->
+  <div class="jrnl-stats">
+    <div class="jrnl-stat">
+      <div class="jrnl-stat-label">Net P&amp;L</div>
+      <div class="jrnl-stat-value" id="jsNetPnl">—</div>
+    </div>
+    <div class="jrnl-stat">
+      <div class="jrnl-stat-label">Week</div>
+      <div class="jrnl-stat-value" id="jsWeek">—</div>
+    </div>
+    <div class="jrnl-stat">
+      <div class="jrnl-stat-label">Win %</div>
+      <div class="jrnl-stat-value" id="jsWinPct">—</div>
+    </div>
+  </div>
 
   <!-- INPUTS -->
   <div class="card">
@@ -703,6 +749,51 @@
         .catch(err => console.warn('SW:', err))
     })
   }
+
+  // ── Journal stats ──
+  function loadJournalStats() {
+    try {
+      const trades   = JSON.parse(localStorage.getItem('jrnl_trades_v1')) || []
+      const balances = JSON.parse(localStorage.getItem('jrnl_balances_v1')) || {}
+
+      if (!trades.length) return
+
+      // Net P&L = all initial balances + all trade P&L
+      const allAccts      = [...new Set(trades.map(t => t.account))]
+      const initialBal    = allAccts.reduce((s, a) => s + (balances[a] || 0), 0)
+      const tradePnl      = trades.reduce((s, t) => s + t.pnl, 0)
+      const net           = initialBal + tradePnl
+
+      // Current week (Sun → Sat)
+      const now     = new Date()
+      const dow     = now.getDay() // 0=Sun
+      const weekStart = new Date(now); weekStart.setHours(0,0,0,0); weekStart.setDate(now.getDate() - dow)
+      const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7)
+      const weekPnl   = trades
+        .filter(t => { const d = new Date(t.boughtTS); return d >= weekStart && d < weekEnd })
+        .reduce((s, t) => s + t.pnl, 0)
+
+      // Trade win %
+      const wins   = trades.filter(t => t.pnl > 0).length
+      const winPct = trades.length ? (wins / trades.length * 100) : null
+
+      const fmtD = n => {
+        const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        return (n < 0 ? '-$' : '$') + abs
+      }
+
+      const setEl = (id, val, pos) => {
+        const el = $( id)
+        el.textContent = val
+        el.className = 'jrnl-stat-value' + (val === '—' ? '' : pos ? ' pos' : ' neg')
+      }
+
+      setEl('jsNetPnl', fmtD(net),    tradePnl >= 0)
+      setEl('jsWeek',   fmtD(weekPnl), weekPnl >= 0)
+      setEl('jsWinPct', winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct >= 50)
+    } catch(e) { console.warn('Journal stats error:', e) }
+  }
+  loadJournalStats()
 
   // ── Init ──
   setDirection('b')

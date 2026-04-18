@@ -743,6 +743,10 @@
       navigator.serviceWorker.register('./sw.js')
         .catch(err => console.warn('SW:', err))
     })
+    // When SW first takes control, reload so all navigations go through cache
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload()
+    })
   }
 
   // ── Journal stats ──

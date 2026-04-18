@@ -100,14 +100,14 @@
     }
 #clearDataBtn {
       background: transparent;
-      border: 1px solid var(--sell);
-      color: var(--sell);
+      border: 1px solid #555;
+      color: #999;
       border-radius: 8px;
       padding: 8px 14px;
       font-size: .85rem;
       cursor: pointer;
     }
-    #clearDataBtn:hover { background: rgba(233,69,96,.1); }
+    #clearDataBtn:hover { background: rgba(255,255,255,.06); color: #bbb; border-color: #777; }
     /* ── Account dropdown ── */
     .acct-dropdown-wrap {
       position: relative;
@@ -399,8 +399,6 @@
     }
     @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
     .chart-full { grid-column: 1 / -1; }
-    .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-    .chart-title { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
     .chart-canvas { position: relative; }
 
     /* ── Scrollbar ── */
@@ -467,17 +465,17 @@
 
   <!-- Charts -->
   <div class="charts-grid">
-    <div class="chart-wrap chart-full">
-      <div class="chart-title">Cumulative P&amp;L</div>
-      <div class="chart-canvas"><canvas id="chartCumPnl" height="120"></canvas></div>
+    <div class="card chart-full">
+      <div class="card-header">Cumulative P&amp;L</div>
+      <div class="card-body"><canvas id="chartCumPnl" height="120"></canvas></div>
     </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Trade Time of Day</div>
-      <div class="chart-canvas"><canvas id="chartTimeScatter" height="180"></canvas></div>
+    <div class="card">
+      <div class="card-header">Trade Time of Day</div>
+      <div class="card-body"><canvas id="chartTimeScatter" height="180"></canvas></div>
     </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Trade Duration (min)</div>
-      <div class="chart-canvas"><canvas id="chartDuration" height="180"></canvas></div>
+    <div class="card">
+      <div class="card-header">Trade Duration (min)</div>
+      <div class="card-body"><canvas id="chartDuration" height="180"></canvas></div>
     </div>
   </div>
 

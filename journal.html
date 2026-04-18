@@ -220,11 +220,11 @@
     /* ── Stats bar ── */
     .stats-bar {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 10px;
       margin-bottom: 16px;
     }
-    @media (max-width: 700px) { .stats-bar { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 800px) { .stats-bar { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 420px) { .stats-bar { grid-template-columns: repeat(2, 1fr); } }
     .stat-card {
       background: var(--card);
@@ -331,7 +331,7 @@
     }
 
     /* ── Trades table ── */
-    .trades-wrap { overflow-x: auto; }
+    .trades-wrap { overflow-x: auto; overflow-y: auto; max-height: 420px; }
     table { width: 100%; border-collapse: collapse; font-size: .82rem; }
     thead th {
       background: #111827;
@@ -385,6 +385,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
+      margin-bottom: 16px;
     }
     @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
     .chart-full { grid-column: 1 / -1; }
@@ -433,9 +434,10 @@
   <div class="stats-bar" id="statsBar">
     <div class="stat-card"><div class="stat-label">Net P&amp;L</div><div class="stat-value neu" id="sNetPnl">—</div></div>
     <div class="stat-card"><div class="stat-label">Trade Win %</div><div class="stat-value neu" id="sWinPct">—</div></div>
-    <div class="stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value neu" id="sProfitFactor">—</div></div>
+    <div class="stat-card"><div class="stat-label">P Factor</div><div class="stat-value neu" id="sProfitFactor">—</div></div>
     <div class="stat-card"><div class="stat-label">Day Win %</div><div class="stat-value neu" id="sDayWin">—</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Win / Loss</div><div class="stat-value neu" id="sAvgWL">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Win</div><div class="stat-value neu" id="sAvgWin">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Loss</div><div class="stat-value neu" id="sAvgLoss">—</div></div>
   </div>
 
   <!-- Calendar -->
@@ -458,14 +460,6 @@
     <div class="chart-wrap chart-full">
       <div class="chart-title">Cumulative P&amp;L</div>
       <div class="chart-canvas"><canvas id="chartCumPnl" height="120"></canvas></div>
-    </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Daily P&amp;L</div>
-      <div class="chart-canvas"><canvas id="chartDailyPnl" height="180"></canvas></div>
-    </div>
-    <div class="chart-wrap">
-      <div class="chart-title">Drawdown</div>
-      <div class="chart-canvas"><canvas id="chartDrawdown" height="180"></canvas></div>
     </div>
     <div class="chart-wrap">
       <div class="chart-title">Trade Time of Day</div>
@@ -524,7 +518,7 @@ let calYear     = new Date().getFullYear()
 let calMonth    = new Date().getMonth() // 0-indexed
 
 // Chart instances
-let chartCum, chartDaily, chartDD, chartTime, chartDur
+let chartCum, chartTime, chartDur
 
 // ── Load persisted trades ────────────────────────────────────────────────────
 function loadFromStorage() {
@@ -847,13 +841,15 @@ function renderStats(trades) {
     el.className = 'stat-value ' + cls
   }
 
-  set('sNetPnl',       net !== 0 || trades.length ? fmtDollar(net) : '—', net >= 0 ? 'pos' : 'neg')
-  set('sWinPct',       winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct >= 50 ? 'pos' : 'neg')
+  // Net P&L: green if trade P&L is positive (above initial balance), red if negative
+  set('sNetPnl',       net !== 0 || trades.length ? fmtDollar(net) : '—', tradePnl >= 0 ? 'pos' : 'neg')
+  // Trade Win %: green >= 50%, red < 50%
+  set('sWinPct',       winPct !== null ? winPct.toFixed(1) + '%' : '—', winPct !== null ? (winPct >= 50 ? 'pos' : 'neg') : 'neu')
   set('sProfitFactor', pf !== null ? pf.toFixed(2) : '—', pf >= 1 ? 'pos' : 'neg')
-  set('sDayWin',       dayWinPct !== null ? dayWinPct.toFixed(1) + '%' : '—', dayWinPct >= 50 ? 'pos' : 'neg')
-  set('sAvgWL', avgWin !== null || avgLoss !== null
-    ? `${avgWin !== null ? fmtDollar(avgWin) : '—'} / ${avgLoss !== null ? fmtDollar(-avgLoss) : '—'}`
-    : '—', 'neu')
+  // Day Win %: green >= 50%, red < 50%
+  set('sDayWin',       dayWinPct !== null ? dayWinPct.toFixed(1) + '%' : '—', dayWinPct !== null ? (dayWinPct >= 50 ? 'pos' : 'neg') : 'neu')
+  set('sAvgWin',  avgWin  !== null ? fmtDollar(avgWin)   : '—', 'pos')
+  set('sAvgLoss', avgLoss !== null ? fmtDollar(-avgLoss) : '—', 'neg')
 }
 
 function fmtDollar(n) {
@@ -969,7 +965,7 @@ function renderTable(trades) {
 
   // Sort newest first
   const sorted = [...trades].sort((a,b) => b.boughtTS.localeCompare(a.boughtTS))
-  const show = sorted.slice(0, 200) // cap at 200 rows
+  const show = sorted.slice(0, 500) // scrollable, ~10 rows visible via max-height
 
   tbody.innerHTML = ''
 
@@ -1034,56 +1030,7 @@ function renderCharts(trades) {
     options: chartOpts({ dollar: true })
   })
 
-  // 2. Daily P&L
-  const dayMap = {}
-  for (const t of sorted) {
-    if (!dayMap[t.dateKey]) dayMap[t.dateKey] = 0
-    dayMap[t.dateKey] = +(dayMap[t.dateKey] + t.pnl).toFixed(2)
-  }
-  const dayKeys = Object.keys(dayMap).sort()
-  const dayColors = dayKeys.map(k => dayMap[k] >= 0 ? 'rgba(0,212,170,.7)' : 'rgba(233,69,96,.7)')
-
-  destroyChart('chartDaily', chartDaily)
-  chartDaily = new Chart(document.getElementById('chartDailyPnl'), {
-    type: 'bar',
-    data: {
-      labels: dayKeys.map(k => { const p = k.split('-'); return `${+p[1]}/${+p[2]}` }),
-      datasets: [{
-        data: dayKeys.map(k => dayMap[k]),
-        backgroundColor: dayColors,
-        borderRadius: 3,
-      }]
-    },
-    options: chartOpts({ dollar: true })
-  })
-
-  // 3. Drawdown
-  const ddData = []
-  let peak = 0, runDD = 0
-  for (const t of sorted) {
-    runDD += t.pnl
-    if (runDD > peak) peak = runDD
-    ddData.push(+Math.min(0, runDD - peak).toFixed(2))
-  }
-
-  destroyChart('chartDD', chartDD)
-  chartDD = new Chart(document.getElementById('chartDrawdown'), {
-    type: 'line',
-    data: {
-      labels: cumLabels,
-      datasets: [{
-        data: ddData,
-        borderColor: '#e94560',
-        backgroundColor: 'rgba(233,69,96,.1)',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 0,
-      }]
-    },
-    options: chartOpts({ dollar: true })
-  })
-
-  // 4. Trade time scatter (hour of day vs P&L)
+  // 2. Trade time scatter (hour of day vs P&L)
   const timePoints = sorted.map(t => {
     const d = new Date(t.boughtTS)
     const hour = d.getHours() + d.getMinutes() / 60
@@ -1104,7 +1051,7 @@ function renderCharts(trades) {
       ...chartOpts({ dollar: true }),
       scales: {
         x: {
-          title: { display: true, text: 'Hour (ET)', color: '#888', font: { size: 10 } },
+          title: { display: true, text: 'Hour ET', color: '#888', font: { size: 10 } },
           ticks: {
             color: '#888', font: { size: 10 },
             callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}`

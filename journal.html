@@ -76,21 +76,6 @@
     /* ── Layout ── */
     .page { max-width: 1200px; margin: 0 auto; padding: 16px; }
 
-    /* ── Import zone ── */
-    .import-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      background: var(--card);
-      padding: 28px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
-      margin-bottom: 16px;
-    }
-    .import-zone.drag-over { border-color: var(--buy); background: rgba(0,212,170,.06); }
-    .import-zone p { color: var(--text-dim); font-size: .9rem; margin-top: 6px; }
-    .import-zone strong { color: var(--text); font-size: 1rem; }
-    #csvFileInput { display: none; }
     .import-actions {
       display: flex;
       align-items: center;
@@ -98,6 +83,18 @@
       margin-bottom: 16px;
       flex-wrap: wrap;
     }
+    #syncFolderBtn {
+      background: var(--accent);
+      border: 1px solid rgba(255,255,255,.15);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: .85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #syncFolderBtn:hover { filter: brightness(1.25); }
+    #folderInput { display: none; }
 #clearDataBtn {
       background: transparent;
       border: 1px solid #555;
@@ -259,6 +256,7 @@
       gap: 10px;
     }
     .card-body { padding: 16px; }
+    .card-body canvas { display: block; }
 
     /* ── Calendar ── */
     .cal-nav {
@@ -402,9 +400,13 @@
     .chart-canvas { position: relative; }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* Hide page scrollbar */
+    body { scrollbar-width: none; }
+    body::-webkit-scrollbar { display: none; }
+    /* Keep subtle scrollbar for inner scrollable areas */
+    .trades-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    .trades-wrap::-webkit-scrollbar-track { background: transparent; }
+    .trades-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   </style>
 </head>
 <body>
@@ -421,13 +423,9 @@
 <div class="page">
 
   <!-- Import -->
-  <div class="import-zone" id="dropZone">
-    <strong>Drop Tradovate CSV files here</strong>
-    <p>Account is auto-detected from filename (e.g. tof51859.csv → account 51859)</p>
-  </div>
-
   <div class="import-actions">
-    <input type="file" id="csvFileInput" accept=".csv" multiple>
+    <input type="file" id="folderInput" webkitdirectory accept=".csv">
+    <button id="syncFolderBtn">📁 Sync Folder</button>
     <div class="acct-dropdown-wrap" id="acctDropdownWrap">
       <button class="acct-dropdown-btn" id="acctDropdownBtn">
         <span id="acctDropdownLabel">All Accounts</span>
@@ -1174,21 +1172,40 @@ function handleFiles(files) {
   }
 }
 
-// ── Drag & drop ──────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone')
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over') })
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'))
-dropZone.addEventListener('drop', e => {
-  e.preventDefault()
-  dropZone.classList.remove('drag-over')
-  handleFiles(e.dataTransfer.files)
-})
-dropZone.addEventListener('click', () => document.getElementById('csvFileInput').click())
+// ── Sync Folder ──────────────────────────────────────────────────────────────
+async function syncFolder(dirHandle) {
+  const files = []
+  for await (const entry of dirHandle.values()) {
+    if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.csv')) {
+      files.push(await entry.getFile())
+    }
+  }
+  if (!files.length) { alert('No CSV files found in that folder.'); return }
+  handleFiles(files)
+}
 
-document.getElementById('csvFileInput').addEventListener('change', e => {
-  handleFiles(e.target.files)
+document.getElementById('syncFolderBtn').addEventListener('click', async () => {
+  // Modern File System Access API (Chrome/Edge desktop)
+  if ('showDirectoryPicker' in window) {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'read' })
+      await syncFolder(dirHandle)
+    } catch (e) {
+      if (e.name !== 'AbortError') console.warn('Folder picker error:', e)
+    }
+  } else {
+    // Fallback: webkitdirectory input (Safari / iOS)
+    document.getElementById('folderInput').click()
+  }
+})
+
+document.getElementById('folderInput').addEventListener('change', e => {
+  const files = [...e.target.files].filter(f => f.name.toLowerCase().endsWith('.csv'))
+  if (!files.length) { alert('No CSV files found in that folder.'); return }
+  handleFiles(files)
   e.target.value = ''
 })
+
 
 // ── Clear data ───────────────────────────────────────────────────────────────
 document.getElementById('clearDataBtn').addEventListener('click', () => {
@@ -1211,28 +1228,6 @@ document.getElementById('calNext').addEventListener('click', () => {
   if (calMonth > 11) { calMonth = 0; calYear++ }
   renderCalendar(filteredTrades())
 })
-
-// ── Swipe right → Calc ───────────────────────────────────────────────────────
-;(function() {
-  let startX = 0, startY = 0, swiping = false
-  const THRESHOLD = 80
-  document.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX
-    startY = e.touches[0].clientY
-    swiping = false
-  }, { passive: true })
-  document.addEventListener('touchmove', e => {
-    const dx = e.touches[0].clientX - startX
-    const dy = e.touches[0].clientY - startY
-    if (!swiping && Math.abs(dx) > Math.abs(dy) + 10) swiping = true
-  }, { passive: true })
-  document.addEventListener('touchend', e => {
-    if (!swiping) return
-    const dx = e.changedTouches[0].clientX - startX
-    if (dx > THRESHOLD) window.location.href = 'index.html' // swipe right → Calc
-    swiping = false
-  }, { passive: true })
-})()
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadFromStorage()

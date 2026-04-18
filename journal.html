@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <title>Trading Journal — Futures Calc</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -533,6 +534,112 @@
     .modal-btn.save { background: var(--buy); color: #000; display: none; }
     .modal-btn.cancel { background: transparent; border: 1px solid #555; color: #999; display: none; }
     .modal-btn:hover { filter: brightness(1.15); }
+
+    /* ── Trade Chart Modal ── */
+    #tradesTbody tr { cursor: pointer; transition: background .1s; }
+    #tradesTbody tr:hover { background: rgba(255,255,255,.05); }
+    .tc-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.72);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .tc-overlay.open { display: flex; }
+    .tc-modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 90dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .tc-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .tc-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .tc-sub {
+      font-size: .75rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+    .tc-close {
+      background: rgba(255,255,255,.1);
+      border: none;
+      color: var(--text);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      font-size: 1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tc-close:hover { background: rgba(255,255,255,.2); }
+    .tc-stats {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tc-stat {
+      flex: 1;
+      padding: 8px 12px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+    .tc-stat:last-child { border-right: none; }
+    .tc-stat-label {
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+    .tc-stat-value {
+      font-family: "SF Mono","Fira Code",monospace;
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .tc-stat-value.pos { color: var(--buy); }
+    .tc-stat-value.neg { color: var(--sell); }
+    .tc-body {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      background: #0d1117;
+    }
+    .tc-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-dim);
+      font-size: .85rem;
+    }
+    .tc-placeholder svg { opacity: .35; }
+    #tcChartContainer { width: 100%; height: 340px; }
     /* Keep subtle scrollbar for inner scrollable areas */
     .trades-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
     .trades-wrap::-webkit-scrollbar-track { background: transparent; }
@@ -670,6 +777,27 @@
       <button class="modal-btn cancel" id="checklistCancel">Cancel</button>
       <button class="modal-btn edit" id="checklistEdit">Edit</button>
       <button class="modal-btn save" id="checklistSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trade Chart Modal -->
+<div class="tc-overlay" id="tcOverlay">
+  <div class="tc-modal">
+    <div class="tc-header">
+      <div>
+        <div class="tc-title" id="tcTitle">—</div>
+        <div class="tc-sub" id="tcSub">—</div>
+      </div>
+      <button class="tc-close" id="tcClose">✕</button>
+    </div>
+    <div class="tc-stats" id="tcStats"></div>
+    <div class="tc-body">
+      <div class="tc-placeholder" id="tcPlaceholder">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span id="tcPlaceholderMsg">Loading chart data…</span>
+      </div>
+      <div id="tcChartContainer"></div>
     </div>
   </div>
 </div>
@@ -1222,6 +1350,7 @@ function renderTable(trades) {
       <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtDollar(t.pnl)}</td>
       <td><span class="badge-acct">${t.account}</span></td>
     `
+    tr.addEventListener('click', () => openTradeChart(t))
     tbody.appendChild(tr)
   }
 }
@@ -1397,6 +1526,180 @@ document.getElementById('folderInput').addEventListener('change', e => {
 
 
 // ── Clear data ───────────────────────────────────────────────────────────────
+
+// ── Trade Chart ──────────────────────────────────────────────────────────────
+let tcChart = null
+
+function toYahooSymbol(sym) {
+  // Strip Tradovate expiry code: MNQH5 → MNQ, NQH25 → NQ, ESM25 → ES
+  const base = sym.replace(/[FGHJKMNQUVXZ]\d{1,2}$/, '')
+  return base + '=F'
+}
+
+function openTradeChart(trade) {
+  const overlay  = document.getElementById('tcOverlay')
+  const title    = document.getElementById('tcTitle')
+  const sub      = document.getElementById('tcSub')
+  const stats    = document.getElementById('tcStats')
+  const ph       = document.getElementById('tcPlaceholder')
+  const phMsg    = document.getElementById('tcPlaceholderMsg')
+  const container = document.getElementById('tcChartContainer')
+
+  // Destroy previous chart
+  if (tcChart) { tcChart.remove(); tcChart = null }
+  container.innerHTML = ''
+
+  // Header
+  const dt = new Date(trade.boughtTS)
+  const dateStr = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })
+  const entryTime = dt.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true })
+  const exitTime  = new Date(trade.soldTS).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true })
+  const sideColor = trade.side === 'Long' ? 'var(--buy)' : 'var(--sell)'
+
+  title.innerHTML = `<span style="color:${sideColor}">${trade.side.toUpperCase()}</span> &nbsp;${trade.symbol}`
+  sub.textContent = `${dateStr} · ${entryTime} → ${exitTime} · ${trade.duration < 1 ? Math.round(trade.duration*60)+'s' : trade.duration.toFixed(1)+'m'}`
+
+  // Stats row
+  const pnlColor = trade.pnl >= 0 ? 'pos' : 'neg'
+  stats.innerHTML = `
+    <div class="tc-stat"><div class="tc-stat-label">Entry</div><div class="tc-stat-value">${trade.entry.toFixed(2)}</div></div>
+    <div class="tc-stat"><div class="tc-stat-label">Exit</div><div class="tc-stat-value">${trade.exit.toFixed(2)}</div></div>
+    <div class="tc-stat"><div class="tc-stat-label">Qty</div><div class="tc-stat-value">${trade.qty}</div></div>
+    <div class="tc-stat"><div class="tc-stat-label">P&amp;L</div><div class="tc-stat-value ${pnlColor}">${fmtDollar(trade.pnl)}</div></div>
+  `
+
+  // Show loading state
+  ph.style.display = 'flex'
+  phMsg.textContent = 'Loading chart data…'
+  container.style.display = 'none'
+  overlay.classList.add('open')
+
+  // Fetch + render
+  fetchAndRenderChart(trade, container, ph, phMsg)
+}
+
+async function fetchAndRenderChart(trade, container, ph, phMsg) {
+  try {
+    const yahooSym = toYahooSymbol(trade.symbol)
+    const durationMs = new Date(trade.soldTS) - new Date(trade.boughtTS)
+    const buffer = Math.max(durationMs * 0.3, 20 * 60 * 1000) // 30% or 20 min
+    const interval = durationMs < 30*60*1000 ? '1m' : durationMs < 3*60*60*1000 ? '5m' : '15m'
+    const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
+    const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=${interval}&period1=${from}&period2=${to}&includePrePost=true`
+    const resp = await fetch(url)
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const json = await resp.json()
+
+    const result = json?.chart?.result?.[0]
+    if (!result) throw new Error('No data')
+
+    const timestamps = result.timestamp || []
+    const q = result.indicators?.quote?.[0] || {}
+    if (!timestamps.length) throw new Error('Empty')
+
+    // Build candle data (filter out nulls)
+    const candles = []
+    for (let i = 0; i < timestamps.length; i++) {
+      if (q.open[i] == null) continue
+      candles.push({
+        time:  timestamps[i],
+        open:  +q.open[i].toFixed(4),
+        high:  +q.high[i].toFixed(4),
+        low:   +q.low[i].toFixed(4),
+        close: +q.close[i].toFixed(4),
+      })
+    }
+    if (!candles.length) throw new Error('No valid candles')
+
+    // Build chart
+    ph.style.display = 'none'
+    container.style.display = 'block'
+
+    tcChart = LightweightCharts.createChart(container, {
+      width:  container.clientWidth,
+      height: 340,
+      layout: {
+        background: { type: 'solid', color: '#0d1117' },
+        textColor: '#e0e0e0',
+      },
+      grid: {
+        vertLines: { color: '#1e1e3a' },
+        horzLines: { color: '#1e1e3a' },
+      },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: { borderColor: '#2a2a4a' },
+      timeScale: {
+        borderColor: '#2a2a4a',
+        timeVisible: true,
+        secondsVisible: false,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
+    })
+
+    const series = tcChart.addCandlestickSeries({
+      upColor:          '#00d4aa',
+      downColor:        '#e94560',
+      borderUpColor:    '#00d4aa',
+      borderDownColor:  '#e94560',
+      wickUpColor:      '#00d4aa',
+      wickDownColor:    '#e94560',
+    })
+    series.setData(candles)
+
+    // Entry / exit price lines
+    const LS = LightweightCharts.LineStyle
+    series.createPriceLine({ price: trade.entry, color: '#00d4aa', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Entry' })
+    series.createPriceLine({ price: trade.exit,  color: trade.pnl >= 0 ? '#00d4aa' : '#e94560', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Exit' })
+
+    // Entry / exit markers
+    const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
+    const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
+    // Snap markers to nearest candle time
+    const snap = ts => candles.reduce((prev, c) => Math.abs(c.time - ts) < Math.abs(prev.time - ts) ? c : prev).time
+
+    series.setMarkers([
+      {
+        time:     snap(entryTs),
+        position: trade.side === 'Long' ? 'belowBar' : 'aboveBar',
+        color:    trade.side === 'Long' ? '#00d4aa' : '#e94560',
+        shape:    trade.side === 'Long' ? 'arrowUp'  : 'arrowDown',
+        text:     `Entry @ ${trade.entry.toFixed(2)}`,
+      },
+      {
+        time:     snap(exitTs),
+        position: trade.side === 'Long' ? 'aboveBar' : 'belowBar',
+        color:    trade.pnl >= 0 ? '#00d4aa' : '#e94560',
+        shape:    trade.side === 'Long' ? 'arrowDown' : 'arrowUp',
+        text:     `Exit @ ${trade.exit.toFixed(2)}`,
+      },
+    ])
+
+    tcChart.timeScale().fitContent()
+
+    // Handle resize
+    const ro = new ResizeObserver(() => {
+      if (tcChart) tcChart.applyOptions({ width: container.clientWidth })
+    })
+    ro.observe(container)
+
+  } catch (err) {
+    ph.style.display = 'flex'
+    container.style.display = 'none'
+    phMsg.textContent = `Chart unavailable — ${err.message === 'Failed to fetch' ? 'network error or symbol not found' : 'no data for this symbol/date'}`
+  }
+}
+
+document.getElementById('tcClose').addEventListener('click', () => {
+  document.getElementById('tcOverlay').classList.remove('open')
+  if (tcChart) { tcChart.remove(); tcChart = null }
+  document.getElementById('tcChartContainer').innerHTML = ''
+})
+document.getElementById('tcOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('tcClose').click()
+})
 
 // ── Calendar navigation ──────────────────────────────────────────────────────
 document.getElementById('calPrev').addEventListener('click', () => {

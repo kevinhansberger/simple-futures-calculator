@@ -1588,7 +1588,7 @@ const CHART_OPTS = {
   },
   grid: { vertLines: { color: '#1e1e3a' }, horzLines: { color: '#1e1e3a' } },
   crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-  rightPriceScale: { borderColor: '#2a2a4a' },
+  rightPriceScale: { borderColor: '#2a2a4a', autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } },
   timeScale: { borderColor: '#2a2a4a', timeVisible: true, secondsVisible: false },
 }
 
@@ -1636,6 +1636,7 @@ function renderFallbackChart(trade, container, ph, phMsg) {
   series.setData(pts)
   addMarkersAndLines(series, trade, pts)
   tcChart.timeScale().fitContent()
+  series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
 
   // Label so user knows this isn't real market data
   document.getElementById('tcSub').textContent +=  ' · entry→exit only (market data unavailable)'
@@ -1707,6 +1708,7 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
   series.setData(candles)
   addMarkersAndLines(series, trade, candles)
   tcChart.timeScale().fitContent()
+  series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
 }
 
 document.getElementById('tcClose').addEventListener('click', () => {

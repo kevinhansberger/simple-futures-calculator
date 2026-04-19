@@ -793,17 +793,19 @@
         <polyline points="20 6 9 17 4 12"/>
       </svg>
     </button>
+    <button id="monitorBtn" title="Notes">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    </button>
     <button id="lockBtn" title="Logins">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-    </button>
-    <button id="monitorBtn" title="Education" onclick="window.open('https://www.skool.com/peakvest','_blank')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-        <line x1="8" y1="21" x2="16" y2="21"/>
-        <line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     </button>
     <button id="newsBtn" title="News">
@@ -1737,13 +1739,14 @@ let tcValuesHidden = false
 
 function tcUpdateStats(trade) {
   const pnlColor = trade.pnl >= 0 ? 'pos' : 'neg'
-  const qtyVal   = tcValuesHidden ? '—' : trade.qty
-  const pnlVal   = tcValuesHidden ? '—' : `<span class="${pnlColor}">${fmtDollar(trade.pnl)}</span>`
+  const qtyVal  = tcValuesHidden ? '—' : trade.qty
+  const pnlVal  = tcValuesHidden ? '—' : fmtDollar(trade.pnl)
+  const pnlCls  = tcValuesHidden ? '' : pnlColor
   document.getElementById('tcStats').innerHTML = `
     <div class="tc-stat"><div class="tc-stat-label">Entry</div><div class="tc-stat-value">${trade.entry.toFixed(2)}</div></div>
     <div class="tc-stat"><div class="tc-stat-label">Exit</div><div class="tc-stat-value">${trade.exit.toFixed(2)}</div></div>
     <div class="tc-stat"><div class="tc-stat-label">Qty</div><div class="tc-stat-value">${qtyVal}</div></div>
-    <div class="tc-stat"><div class="tc-stat-label">P&amp;L</div><div class="tc-stat-value">${pnlVal}</div></div>
+    <div class="tc-stat"><div class="tc-stat-label">P&amp;L</div><div class="tc-stat-value ${pnlCls}">${pnlVal}</div></div>
   `
 }
 

@@ -500,6 +500,36 @@
       min-height: 60px;
     }
     .modal-display:empty::before { content: 'Nothing saved yet.'; color: var(--text-dim); font-style: italic; }
+
+    /* Routine checkboxes */
+    .routine-list { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+    .routine-item { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .routine-item input[type="checkbox"] { display: none; }
+    .routine-check {
+      width: 20px; height: 20px; flex-shrink: 0;
+      border: 2px solid var(--border);
+      border-radius: 5px;
+      background: var(--input-bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, border-color .15s;
+    }
+    .routine-item input:checked ~ .routine-check {
+      background: var(--buy);
+      border-color: var(--buy);
+    }
+    .routine-check::after {
+      content: '';
+      width: 5px; height: 9px;
+      border: 2px solid #000;
+      border-top: none; border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+      display: none;
+    }
+    .routine-item input:checked ~ .routine-check::after { display: block; }
+    .routine-label { font-size: .9rem; color: var(--text); line-height: 1.4; transition: color .15s; }
+    .routine-item input:checked ~ .routine-check + .routine-label,
+    .routine-item input:checked ~ * .routine-label { color: var(--text-dim); text-decoration: line-through; }
+    .routine-item:has(input:checked) .routine-label { color: var(--text-dim); text-decoration: line-through; }
     .modal-textarea {
       width: 100%;
       background: var(--input-bg);
@@ -1782,24 +1812,74 @@ const checklistEdit     = document.getElementById('checklistEdit')
 const checklistSave     = document.getElementById('checklistSave')
 const checklistCancel   = document.getElementById('checklistCancel')
 
-const DEFAULT_ROUTINE = `• Mark RTH Gap
-• Mark Killzones Liquidity
-• Mark Liquidity Blocks
-• Mark Timeframe Levels
-• Set Key Levels`
+const ROUTINE_CHECKS_KEY = 'jrnl_routine_checks_v1'
+
+const DEFAULT_ROUTINE = `Mark RTH Gap
+Mark Killzones Liquidity
+Mark Liquidity Blocks
+Mark Timeframe Levels
+Set Key Levels`
 
 const DEFAULT_RULES = `• 2 losing trades = Lock out for Day
 • 2 A or A+ trades = Lock out for Day
 • 1 winning trade and 1 losing trade = Lock out for Day
 • If close to Daily Goal on Friday = Close trade at Daily Goal and Lock Out for Day`
 
+function todayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+function getRoutineChecks(items) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ROUTINE_CHECKS_KEY) || '{}')
+    // Reset if saved on a different day
+    if (saved.date !== todayKey()) return new Array(items.length).fill(false)
+    return items.map((_, i) => !!saved.checks[i])
+  } catch { return new Array(items.length).fill(false) }
+}
+
+function saveRoutineChecks(checks) {
+  localStorage.setItem(ROUTINE_CHECKS_KEY, JSON.stringify({ date: todayKey(), checks }))
+}
+
+function renderRoutineCheckboxes(items, checks) {
+  routineDisplay.innerHTML = ''
+  if (!items.length) { routineDisplay.textContent = 'Nothing saved yet.'; return }
+  const list = document.createElement('div')
+  list.className = 'routine-list'
+  items.forEach((text, i) => {
+    const label = document.createElement('label')
+    label.className = 'routine-item'
+    const cb = document.createElement('input')
+    cb.type = 'checkbox'
+    cb.checked = checks[i]
+    const box = document.createElement('span')
+    box.className = 'routine-check'
+    const lbl = document.createElement('span')
+    lbl.className = 'routine-label'
+    lbl.textContent = text
+    label.appendChild(cb)
+    label.appendChild(box)
+    label.appendChild(lbl)
+    cb.addEventListener('change', () => {
+      checks[i] = cb.checked
+      saveRoutineChecks(checks)
+    })
+    list.appendChild(label)
+  })
+  routineDisplay.appendChild(list)
+}
+
 function loadChecklist() {
-  const routine = localStorage.getItem(ROUTINE_KEY) ?? DEFAULT_ROUTINE
-  const rules   = localStorage.getItem(RULES_KEY)   ?? DEFAULT_RULES
-  routineDisplay.textContent  = routine
-  rulesDisplay.textContent    = rules
-  routineTextarea.value       = routine
-  rulesTextarea.value         = rules
+  const routineText = localStorage.getItem(ROUTINE_KEY) ?? DEFAULT_ROUTINE
+  const rules       = localStorage.getItem(RULES_KEY)   ?? DEFAULT_RULES
+  const items       = routineText.split('\n').map(l => l.replace(/^[•\-\*]\s*/, '').trim()).filter(Boolean)
+  const checks      = getRoutineChecks(items)
+  renderRoutineCheckboxes(items, checks)
+  rulesDisplay.textContent = rules
+  routineTextarea.value    = routineText
+  rulesTextarea.value      = rules
 }
 
 function setEditMode(editing) {

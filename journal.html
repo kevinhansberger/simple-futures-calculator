@@ -812,6 +812,25 @@
   </div>
 </div>
 
+<!-- News Modal -->
+<div class="modal-overlay" id="newsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>News</h2>
+      <button class="modal-close" id="newsClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-display" id="newsDisplay" style="min-height:120px;"></div>
+      <textarea class="modal-textarea" id="newsTextarea" placeholder="Enter today's news notes..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" id="newsCancel" style="display:none">Cancel</button>
+      <button class="modal-btn edit" id="newsEdit">Edit</button>
+      <button class="modal-btn save" id="newsSave" style="display:none">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Trade Chart Modal -->
 <div class="tc-overlay" id="tcOverlay">
   <div class="tc-modal">
@@ -1818,7 +1837,8 @@ const DEFAULT_ROUTINE = `Mark RTH Gap
 Mark Killzones Liquidity
 Mark Liquidity Blocks
 Mark Timeframe Levels
-Set Key Levels`
+Set Key Levels
+Determine Daily Bias`
 
 const DEFAULT_RULES = `• 2 losing trades = Lock out for Day
 • 2 A or A+ trades = Lock out for Day
@@ -1918,6 +1938,48 @@ checklistSave.addEventListener('click', () => {
   localStorage.setItem(RULES_KEY,   rulesTextarea.value)
   loadChecklist()
   setEditMode(false)
+})
+
+// ── News Modal ───────────────────────────────────────────────────────────────
+const NEWS_KEY       = 'jrnl_news_v1'
+const newsOverlay    = document.getElementById('newsOverlay')
+const newsDisplay    = document.getElementById('newsDisplay')
+const newsTextarea   = document.getElementById('newsTextarea')
+const newsEdit       = document.getElementById('newsEdit')
+const newsSave       = document.getElementById('newsSave')
+const newsCancel     = document.getElementById('newsCancel')
+
+function loadNews() {
+  const text = localStorage.getItem(NEWS_KEY) || ''
+  newsDisplay.textContent = text
+  newsTextarea.value = text
+}
+
+function setNewsEditMode(editing) {
+  newsDisplay.style.display    = editing ? 'none' : 'block'
+  newsTextarea.style.display   = editing ? 'block' : 'none'
+  newsEdit.style.display       = editing ? 'none' : 'block'
+  newsSave.style.display       = editing ? 'block' : 'none'
+  newsCancel.style.display     = editing ? 'block' : 'none'
+}
+
+document.getElementById('newsBtn').addEventListener('click', () => {
+  loadNews()
+  setNewsEditMode(false)
+  newsOverlay.classList.add('open')
+})
+document.getElementById('newsClose').addEventListener('click', () => {
+  newsOverlay.classList.remove('open')
+})
+newsOverlay.addEventListener('click', e => {
+  if (e.target === newsOverlay) newsOverlay.classList.remove('open')
+})
+newsEdit.addEventListener('click', () => setNewsEditMode(true))
+newsCancel.addEventListener('click', () => { loadNews(); setNewsEditMode(false) })
+newsSave.addEventListener('click', () => {
+  localStorage.setItem(NEWS_KEY, newsTextarea.value)
+  loadNews()
+  setNewsEditMode(false)
 })
 
 // ── Init ─────────────────────────────────────────────────────────────────────

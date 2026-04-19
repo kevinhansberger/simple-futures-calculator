@@ -429,6 +429,65 @@
     body { scrollbar-width: none; }
     body::-webkit-scrollbar { display: none; }
 
+    /* ── News Modal ── */
+    .news-modal {
+      max-width: 720px;
+      height: 88dvh;
+    }
+    .news-tabs {
+      display: flex;
+      background: var(--input-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .news-tab {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .news-tab.active { color: var(--buy); border-bottom-color: var(--buy); }
+    .news-tab:hover:not(.active) { color: var(--text); }
+    .news-tab-panel {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ── News Feed ── */
+    .news-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-decoration: none;
+      color: inherit;
+      transition: background .15s;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-item:hover { background: rgba(255,255,255,.04); }
+    .news-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .news-sentiment {
+      font-size: .65rem; font-weight: 700; letter-spacing: .05em;
+      padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+    }
+    .sent-bullish       { background: rgba(0,212,170,.18); color: #00d4aa; }
+    .sent-somewhat-bullish { background: rgba(0,212,170,.10); color: #00b894; }
+    .sent-neutral       { background: rgba(255,255,255,.08); color: #888; }
+    .sent-somewhat-bearish { background: rgba(233,69,96,.10); color: #e07080; }
+    .sent-bearish       { background: rgba(233,69,96,.18); color: #e94560; }
+    .news-source { font-size: .7rem; color: var(--text-dim); }
+    .news-time   { font-size: .7rem; color: var(--text-dim); margin-left: auto; }
+    .news-title  { font-size: .85rem; line-height: 1.4; color: var(--text); }
+    .news-empty  { padding: 24px 16px; text-align: center; color: var(--text-dim); font-style: italic; }
+
     /* ── Daily Checklist Modal ── */
     .modal-overlay {
       display: none;
@@ -814,19 +873,37 @@
 
 <!-- News Modal -->
 <div class="modal-overlay" id="newsOverlay">
-  <div class="modal">
+  <div class="modal news-modal">
     <div class="modal-header">
-      <h2>News</h2>
-      <button class="modal-close" id="newsClose">✕</button>
+      <h2 id="newsModalTitle">Economic Calendar</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="modal-close" id="newsRefresh" title="Refresh news feed" style="font-size:1.1rem;width:32px;display:none">↻</button>
+        <button class="modal-close" id="newsClose">✕</button>
+      </div>
     </div>
-    <div class="modal-body">
-      <div class="modal-display" id="newsDisplay" style="min-height:120px;"></div>
-      <textarea class="modal-textarea" id="newsTextarea" placeholder="Enter today's news notes..."></textarea>
+    <!-- Tab bar -->
+    <div class="news-tabs">
+      <button class="news-tab active" data-tab="calendar">📅 Calendar</button>
+      <button class="news-tab" data-tab="feed">📰 Market News</button>
     </div>
-    <div class="modal-footer">
-      <button class="modal-btn cancel" id="newsCancel" style="display:none">Cancel</button>
-      <button class="modal-btn edit" id="newsEdit">Edit</button>
-      <button class="modal-btn save" id="newsSave" style="display:none">Save</button>
+    <!-- Calendar tab -->
+    <div class="news-tab-panel" id="newsTabCalendar">
+      <iframe
+        id="calendarFrame"
+        src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=5&calType=week&timeZone=8&lang=1&theme=dark"
+        frameborder="0"
+        allowtransparency="true"
+        marginwidth="0"
+        marginheight="0"
+        style="width:100%;height:100%;border:none;display:block">
+      </iframe>
+    </div>
+    <!-- Market news tab -->
+    <div class="news-tab-panel" id="newsTabFeed" style="display:none;overflow-y:auto">
+      <div id="newsFeedList" style="padding:0">Loading news…</div>
+    </div>
+    <div class="modal-footer" style="justify-content:flex-start">
+      <span id="newsFeedMeta" style="font-size:.75rem;color:var(--text-dim)"></span>
     </div>
   </div>
 </div>
@@ -1940,46 +2017,116 @@ checklistSave.addEventListener('click', () => {
   setEditMode(false)
 })
 
-// ── News Modal ───────────────────────────────────────────────────────────────
-const NEWS_KEY       = 'jrnl_news_v1'
-const newsOverlay    = document.getElementById('newsOverlay')
-const newsDisplay    = document.getElementById('newsDisplay')
-const newsTextarea   = document.getElementById('newsTextarea')
-const newsEdit       = document.getElementById('newsEdit')
-const newsSave       = document.getElementById('newsSave')
-const newsCancel     = document.getElementById('newsCancel')
+// ── News Modal (Alpha Vantage feed) ──────────────────────────────────────────
+const NEWS_FEED_CACHE_KEY = 'jrnl_av_news_v1'
+const AV_API_KEY          = 'VKKZ65Z3HUM880TJ'
+const newsOverlay         = document.getElementById('newsOverlay')
+const newsFeedList        = document.getElementById('newsFeedList')
+const newsFeedMeta        = document.getElementById('newsFeedMeta')
 
-function loadNews() {
-  const text = localStorage.getItem(NEWS_KEY) || ''
-  newsDisplay.textContent = text
-  newsTextarea.value = text
+const SENT_CLASS = {
+  'Bullish':           'sent-bullish',
+  'Somewhat-Bullish':  'sent-somewhat-bullish',
+  'Neutral':           'sent-neutral',
+  'Somewhat-Bearish':  'sent-somewhat-bearish',
+  'Bearish':           'sent-bearish',
 }
 
-function setNewsEditMode(editing) {
-  newsDisplay.style.display    = editing ? 'none' : 'block'
-  newsTextarea.style.display   = editing ? 'block' : 'none'
-  newsEdit.style.display       = editing ? 'none' : 'block'
-  newsSave.style.display       = editing ? 'block' : 'none'
-  newsCancel.style.display     = editing ? 'block' : 'none'
+function fmtAVTime(ts) {
+  // Alpha Vantage format: "20240418T143000"
+  const y = ts.slice(0,4), mo = ts.slice(4,6), d = ts.slice(6,8)
+  const h = ts.slice(9,11), mi = ts.slice(11,13)
+  const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:00`)
+  const today = new Date()
+  const sameDay = dt.toDateString() === today.toDateString()
+  if (sameDay) return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+         dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
+
+function renderNewsFeed(articles) {
+  if (!articles || !articles.length) {
+    newsFeedList.innerHTML = '<div class="news-empty">No articles found.</div>'
+    return
+  }
+  newsFeedList.innerHTML = ''
+  articles.forEach(a => {
+    const sentLabel = a.overall_sentiment_label || 'Neutral'
+    const sentClass = SENT_CLASS[sentLabel] || 'sent-neutral'
+    const el = document.createElement('a')
+    el.className = 'news-item'
+    el.href = a.url
+    el.target = '_blank'
+    el.rel = 'noopener noreferrer'
+    el.innerHTML = `
+      <div class="news-item-top">
+        <span class="news-sentiment ${sentClass}">${sentLabel}</span>
+        <span class="news-source">${a.source}</span>
+        <span class="news-time">${fmtAVTime(a.time_published)}</span>
+      </div>
+      <div class="news-title">${a.title}</div>
+    `
+    newsFeedList.appendChild(el)
+  })
+}
+
+async function fetchAVNews(force = false) {
+  // Use cache unless forced or stale (different day)
+  try {
+    const cached = JSON.parse(localStorage.getItem(NEWS_FEED_CACHE_KEY) || '{}')
+    if (!force && cached.date === todayKey() && cached.articles?.length) {
+      renderNewsFeed(cached.articles)
+      newsFeedMeta.textContent = `Cached · ${cached.articles.length} articles · ${cached.time}`
+      return
+    }
+  } catch {}
+
+  newsFeedList.innerHTML = '<div class="news-empty">Fetching latest news…</div>'
+  newsFeedMeta.textContent = ''
+
+  try {
+    const url = `${YF_PROXY}?url=${encodeURIComponent(
+      `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_fiscal,economy_monetary,economy_macro,financial_markets&sort=LATEST&limit=30&apikey=${AV_API_KEY}`
+    )}`
+    const res = await fetch(url)
+    const json = await res.json()
+    const articles = json.feed || []
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    localStorage.setItem(NEWS_FEED_CACHE_KEY, JSON.stringify({ date: todayKey(), articles, time: timeStr }))
+    renderNewsFeed(articles)
+    newsFeedMeta.textContent = `Updated ${timeStr} · ${articles.length} articles`
+  } catch (e) {
+    newsFeedList.innerHTML = '<div class="news-empty">Failed to load news. Check connection.</div>'
+    newsFeedMeta.textContent = ''
+  }
+}
+
+// Tab switching
+let activeNewsTab = 'calendar'
+document.querySelectorAll('.news-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeNewsTab = btn.dataset.tab
+    document.querySelectorAll('.news-tab').forEach(b => b.classList.toggle('active', b === btn))
+    document.getElementById('newsTabCalendar').style.display = activeNewsTab === 'calendar' ? 'flex' : 'none'
+    document.getElementById('newsTabFeed').style.display     = activeNewsTab === 'feed'     ? 'block' : 'none'
+    document.getElementById('newsRefresh').style.display     = activeNewsTab === 'feed'     ? 'flex'  : 'none'
+    document.getElementById('newsModalTitle').textContent    = activeNewsTab === 'calendar' ? 'Economic Calendar' : 'Market News'
+    newsFeedMeta.style.display = activeNewsTab === 'feed' ? '' : 'none'
+    if (activeNewsTab === 'feed') fetchAVNews()
+  })
+})
 
 document.getElementById('newsBtn').addEventListener('click', () => {
-  loadNews()
-  setNewsEditMode(false)
   newsOverlay.classList.add('open')
+  // Always open on Calendar tab
+  document.querySelectorAll('.news-tab')[0].click()
 })
 document.getElementById('newsClose').addEventListener('click', () => {
   newsOverlay.classList.remove('open')
 })
+document.getElementById('newsRefresh').addEventListener('click', () => fetchAVNews(true))
 newsOverlay.addEventListener('click', e => {
   if (e.target === newsOverlay) newsOverlay.classList.remove('open')
-})
-newsEdit.addEventListener('click', () => setNewsEditMode(true))
-newsCancel.addEventListener('click', () => { loadNews(); setNewsEditMode(false) })
-newsSave.addEventListener('click', () => {
-  localStorage.setItem(NEWS_KEY, newsTextarea.value)
-  loadNews()
-  setNewsEditMode(false)
 })
 
 // ── Init ─────────────────────────────────────────────────────────────────────

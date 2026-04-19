@@ -1782,9 +1782,20 @@ const checklistEdit     = document.getElementById('checklistEdit')
 const checklistSave     = document.getElementById('checklistSave')
 const checklistCancel   = document.getElementById('checklistCancel')
 
+const DEFAULT_ROUTINE = `• Mark RTH Gap
+• Mark Killzones Liquidity
+• Mark Liquidity Blocks
+• Mark Timeframe Levels
+• Set Key Levels`
+
+const DEFAULT_RULES = `• 2 losing trades = Lock out for Day
+• 2 A or A+ trades = Lock out for Day
+• 1 winning trade and 1 losing trade = Lock out for Day
+• If close to Daily Goal on Friday = Close trade at Daily Goal and Lock Out for Day`
+
 function loadChecklist() {
-  const routine = localStorage.getItem(ROUTINE_KEY) || ''
-  const rules   = localStorage.getItem(RULES_KEY)   || ''
+  const routine = localStorage.getItem(ROUTINE_KEY) ?? DEFAULT_ROUTINE
+  const rules   = localStorage.getItem(RULES_KEY)   ?? DEFAULT_RULES
   routineDisplay.textContent  = routine
   rulesDisplay.textContent    = rules
   routineTextarea.value       = routine

@@ -40,8 +40,9 @@ export default {
     } catch {
       return new Response('Invalid URL', { status: 400 })
     }
-    if (!targetUrl.hostname.endsWith('finance.yahoo.com')) {
-      return new Response('Only finance.yahoo.com targets are allowed', { status: 403 })
+    const allowedHosts = ['finance.yahoo.com', 'alphavantage.co', 'www.alphavantage.co']
+    if (!allowedHosts.some(h => targetUrl.hostname === h || targetUrl.hostname.endsWith('.' + h))) {
+      return new Response('Host not allowed', { status: 403 })
     }
 
     // Proxy the request with a browser-like User-Agent so Yahoo doesn't block it

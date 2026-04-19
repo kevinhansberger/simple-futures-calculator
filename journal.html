@@ -2084,18 +2084,29 @@ async function fetchAVNews(force = false) {
   newsFeedList.innerHTML = '<div class="news-empty">Fetching latest news…</div>'
   newsFeedMeta.textContent = ''
 
+  const avUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_fiscal,economy_monetary,economy_macro,financial_markets&sort=LATEST&limit=30&apikey=${AV_API_KEY}`
+
+  let json = null
+  // 1. Direct — Alpha Vantage supports CORS from browsers
   try {
-    const url = `${YF_PROXY}?url=${encodeURIComponent(
-      `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_fiscal,economy_monetary,economy_macro,financial_markets&sort=LATEST&limit=30&apikey=${AV_API_KEY}`
-    )}`
-    const res = await fetch(url)
-    const json = await res.json()
+    const r = await fetch(avUrl)
+    if (r.ok) { const j = await r.json(); if (j?.feed) json = j }
+  } catch {}
+  // 2. Via our CF proxy (update proxy-worker.js to allow alphavantage.co if needed)
+  if (!json) {
+    try {
+      const r = await fetch(`${YF_PROXY}?url=${encodeURIComponent(avUrl)}`)
+      if (r.ok) { const j = await r.json(); if (j?.feed) json = j }
+    } catch {}
+  }
+
+  if (json) {
     const articles = json.feed || []
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
     localStorage.setItem(NEWS_FEED_CACHE_KEY, JSON.stringify({ date: todayKey(), articles, time: timeStr }))
     renderNewsFeed(articles)
     newsFeedMeta.textContent = `Updated ${timeStr} · ${articles.length} articles`
-  } catch (e) {
+  } else {
     newsFeedList.innerHTML = '<div class="news-empty">Failed to load news. Check connection.</div>'
     newsFeedMeta.textContent = ''
   }

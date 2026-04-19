@@ -2084,7 +2084,7 @@ async function fetchAVNews(force = false) {
   newsFeedList.innerHTML = '<div class="news-empty">Fetching latest news…</div>'
   newsFeedMeta.textContent = ''
 
-  const avUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&topics=economy_monetary,economy_macro,energy_transportation&sort=RELEVANCE&limit=25&apikey=${AV_API_KEY}`
+  const avUrl = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=QQQ,NVDA,AAPL,MSFT,AMZN,META,GOOGL,TSLA,AVGO,AMD,SPY,GLD&topics=economy_monetary,economy_macro&sort=RELEVANCE&limit=25&apikey=${AV_API_KEY}`
 
   let json = null
   // 1. Direct — Alpha Vantage supports CORS from browsers

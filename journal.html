@@ -1676,11 +1676,16 @@ function openTradeChart(trade) {
   if (tcChart) { tcChart.remove(); tcChart = null }
   container.innerHTML = ''
 
+  // For shorts: soldTS = entry (opened short), boughtTS = exit (closed short)
+  // For longs:  boughtTS = entry, soldTS = exit
+  const entryTS = trade.side === 'Short' ? trade.soldTS : trade.boughtTS
+  const exitTS  = trade.side === 'Short' ? trade.boughtTS : trade.soldTS
+
   // Header
-  const dt = new Date(trade.boughtTS)
+  const dt = new Date(entryTS)
   const dateStr = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })
   const entryTime = dt.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true })
-  const exitTime  = new Date(trade.soldTS).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true })
+  const exitTime  = new Date(exitTS).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true })
   const sideColor = trade.side === 'Long' ? 'var(--buy)' : 'var(--sell)'
 
   title.innerHTML = `<span style="color:${sideColor}">${trade.side.toUpperCase()}</span> &nbsp;${trade.symbol}`
@@ -1702,7 +1707,7 @@ function openTradeChart(trade) {
   overlay.classList.add('open')
 
   // Fetch + render
-  fetchAndRenderChart(trade, container, ph, phMsg)
+  fetchAndRenderChart(trade, container, ph, phMsg, entryTS, exitTS)
 }
 
 const CHART_OPTS = {
@@ -1727,14 +1732,14 @@ function showChart(container, ph) {
   tcChart = LightweightCharts.createChart(container, CHART_OPTS)
 }
 
-function addMarkersAndLines(series, trade, candles) {
+function addMarkersAndLines(series, trade, candles, entryTS, exitTS) {
   const LS = LightweightCharts.LineStyle
   const exitColor = trade.pnl >= 0 ? '#00d4aa' : '#e94560'
   series.createPriceLine({ price: trade.entry, color: '#00d4aa', lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Entry' })
   series.createPriceLine({ price: trade.exit,  color: exitColor,  lineWidth: 1, lineStyle: LS.Dashed, axisLabelVisible: true, title: 'Exit'  })
 
-  const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
-  const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
+  const entryTs = Math.floor(new Date(entryTS).getTime() / 1000)
+  const exitTs  = Math.floor(new Date(exitTS).getTime()  / 1000)
   const snap = ts => candles.reduce((p, c) => Math.abs(c.time - ts) < Math.abs(p.time - ts) ? c : p).time
 
   series.setMarkers([
@@ -1749,13 +1754,13 @@ function addMarkersAndLines(series, trade, candles) {
   ])
 }
 
-function renderFallbackChart(trade, container, ph, phMsg) {
+function renderFallbackChart(trade, container, ph, phMsg, entryTS, exitTS) {
   // No market data — show a simple entry→exit line with markers
   showChart(container, ph)
   phMsg.textContent = ''
 
-  const entryTs = Math.floor(new Date(trade.boughtTS).getTime() / 1000)
-  const exitTs  = Math.floor(new Date(trade.soldTS).getTime()   / 1000)
+  const entryTs = Math.floor(new Date(entryTS).getTime() / 1000)
+  const exitTs  = Math.floor(new Date(exitTS).getTime()  / 1000)
   // Need at least 2 distinct timestamps for LW charts
   const t2 = exitTs > entryTs ? exitTs : entryTs + 60
 
@@ -1763,7 +1768,7 @@ function renderFallbackChart(trade, container, ph, phMsg) {
   const series = tcChart.addLineSeries({ color: lineColor, lineWidth: 2, priceLineVisible: false })
   const pts = [{ time: entryTs, value: trade.entry }, { time: t2, value: trade.exit }]
   series.setData(pts)
-  addMarkersAndLines(series, trade, pts)
+  addMarkersAndLines(series, trade, pts, entryTS, exitTS)
   tcChart.timeScale().fitContent()
   requestAnimationFrame(() => {
     series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })
@@ -1800,11 +1805,11 @@ async function fetchYahoo(url) {
   return null
 }
 
-async function fetchAndRenderChart(trade, container, ph, phMsg) {
+async function fetchAndRenderChart(trade, container, ph, phMsg, entryTS, exitTS) {
   const yahooSym   = toYahooSymbol(trade.symbol)
   const encodedSym = encodeURIComponent(yahooSym)
-  const durationMs = new Date(trade.soldTS) - new Date(trade.boughtTS)
-  const ageMs      = Date.now() - new Date(trade.boughtTS).getTime()
+  const durationMs = new Date(exitTS) - new Date(entryTS)
+  const ageMs      = Date.now() - new Date(entryTS).getTime()
   const ageDays    = ageMs / (1000 * 60 * 60 * 24)
 
   // Yahoo Finance intraday data limits:
@@ -1831,8 +1836,8 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
                   : interval === '60m' ? 90*60*1000   // 90 min  (~2 candles)
                   :                      3*24*60*60*1000 // 3 days for daily
   const buffer = Math.max(durationMs * 0.3, minBuffer)
-  const from = Math.floor((new Date(trade.boughtTS).getTime() - buffer) / 1000)
-  const to   = Math.floor((new Date(trade.soldTS).getTime()   + buffer) / 1000)
+  const from = Math.floor((new Date(entryTS).getTime() - buffer) / 1000)
+  const to   = Math.floor((new Date(exitTS).getTime()  + buffer) / 1000)
 
   let candles = null
   for (const host of ['query2', 'query1']) {
@@ -1853,7 +1858,7 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
   }
 
   if (!candles) {
-    renderFallbackChart(trade, container, ph, phMsg)
+    renderFallbackChart(trade, container, ph, phMsg, entryTS, exitTS)
     return
   }
 
@@ -1866,7 +1871,7 @@ async function fetchAndRenderChart(trade, container, ph, phMsg) {
     priceLineVisible: false,
   })
   series.setData(candles)
-  addMarkersAndLines(series, trade, candles)
+  addMarkersAndLines(series, trade, candles, entryTS, exitTS)
   tcChart.timeScale().fitContent()
   requestAnimationFrame(() => {
     series.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.08 } })

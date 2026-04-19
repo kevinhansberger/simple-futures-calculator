@@ -1926,9 +1926,10 @@ Mark Timeframe Levels
 Set Key Levels
 Determine Daily Bias`
 
-const DEFAULT_RULES = `• 2 losing trades = Lock out for Day
+const DEFAULT_RULES = `• Max Daily Loss = Lock out for Day
 • 2 A or A+ trades = Lock out for Day
 • 1 winning trade and 1 losing trade = Lock out for Day
+• Loss of Weekly Goal = Lock out for Week
 • If close to Daily Goal on Friday = Close trade at Daily Goal and Lock Out for Day`
 
 function todayKey() {

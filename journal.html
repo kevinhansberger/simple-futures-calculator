@@ -2100,16 +2100,44 @@ async function fetchAVNews(force = false) {
     } catch {}
   }
 
-  if (json) {
-    const articles = json.feed || []
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-    localStorage.setItem(NEWS_FEED_CACHE_KEY, JSON.stringify({ date: todayKey(), articles, time: timeStr }))
-    renderNewsFeed(articles)
-    newsFeedMeta.textContent = `Updated ${timeStr} · ${articles.length} articles`
-  } else {
-    newsFeedList.innerHTML = '<div class="news-empty">Failed to load news. Check connection.</div>'
+  if (!json) {
+    newsFeedList.innerHTML = '<div class="news-empty">Failed to reach Alpha Vantage. Check connection.</div>'
     newsFeedMeta.textContent = ''
+    return
   }
+
+  // API rate limit or error message
+  const apiMsg = json.Information || json.Note || json.message
+  if (apiMsg) {
+    newsFeedList.innerHTML = `<div class="news-empty">⚠️ ${apiMsg}</div>`
+    newsFeedMeta.textContent = ''
+    return
+  }
+
+  const articles = json.feed || []
+  if (!articles.length) {
+    // Try without topic filters — weekend/off-hours can have sparse macro news
+    try {
+      const r = await fetch(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&sort=LATEST&limit=30&apikey=${AV_API_KEY}`)
+      if (r.ok) {
+        const j = await r.json()
+        if (j?.feed?.length) {
+          const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+          localStorage.setItem(NEWS_FEED_CACHE_KEY, JSON.stringify({ date: todayKey(), articles: j.feed, time: timeStr }))
+          renderNewsFeed(j.feed)
+          newsFeedMeta.textContent = `Updated ${timeStr} · ${j.feed.length} articles`
+          return
+        }
+      }
+    } catch {}
+    newsFeedList.innerHTML = '<div class="news-empty">No articles available right now (markets may be closed).</div>'
+    return
+  }
+
+  const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  localStorage.setItem(NEWS_FEED_CACHE_KEY, JSON.stringify({ date: todayKey(), articles, time: timeStr }))
+  renderNewsFeed(articles)
+  newsFeedMeta.textContent = `Updated ${timeStr} · ${articles.length} articles`
 }
 
 // Tab switching

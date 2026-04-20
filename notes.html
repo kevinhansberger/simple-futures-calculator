@@ -12,6 +12,7 @@
   <title>Trading Notes — Futures Calc</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    input, select, textarea { font-size: 16px !important; }
 
     :root {
       --bg:        #e8e8e8;
@@ -340,10 +341,14 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
-      font-size: .88rem;
+      font-size: 16px;
       font-family: inherit;
       padding: 9px 12px;
       color-scheme: dark;
+      min-height: 44px;
+      box-sizing: border-box;
+      -webkit-appearance: none;
+      appearance: none;
     }
     .modal-date-input:focus { outline: none; border-color: var(--buy); }
 
@@ -571,7 +576,8 @@ function getSeg(gid) {
 function setSeg(gid, val) {
   document.querySelectorAll(`#${gid} .seg-btn`).forEach(b => {
     b.classList.toggle('active', b.dataset.val === val)
-    if (gid === 'noteGradeGroup') b.classList.toggle('active-neg', b.dataset.val === '-' && val === '-')
+    const isShortGroup = gid === 'noteTrendGroup' || gid === 'noteDirectionGroup'
+    if (isShortGroup) b.classList.toggle('active-neg', b.dataset.val === 'Short' && val === 'Short')
   })
 }
 
@@ -581,7 +587,8 @@ function setSeg(gid, val) {
     btn.addEventListener('click', () => {
       document.querySelectorAll(`#${gid} .seg-btn`).forEach(b => b.classList.remove('active','active-neg'))
       btn.classList.add('active')
-      if (gid === 'noteGradeGroup' && btn.dataset.val === '-') btn.classList.add('active-neg')
+      const isShortGroup = gid === 'noteTrendGroup' || gid === 'noteDirectionGroup'
+      if (isShortGroup && btn.dataset.val === 'Short') btn.classList.add('active-neg')
       if (gid === 'noteTypeGroup') {
         const isTrade = btn.dataset.val === 'Trade'
         document.getElementById('noteTradeFields').style.display = isTrade ? 'flex' : 'none'

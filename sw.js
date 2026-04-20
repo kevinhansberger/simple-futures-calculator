@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tofx3-v4'
+const CACHE_NAME = '20260419a'
 const ASSETS = [
   './',
   './index.html',

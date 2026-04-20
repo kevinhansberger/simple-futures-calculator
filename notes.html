@@ -464,8 +464,7 @@
         <div>
           <div class="modal-section-label">Strategy</div>
           <div class="seg-group" id="noteStrategyGroup">
-            <button class="seg-btn active" data-val="None">None</button>
-            <button class="seg-btn" data-val="VWAP">VWAP</button>
+            <button class="seg-btn active" data-val="VWAP">VWAP</button>
             <button class="seg-btn" data-val="LEVEL">LEVEL</button>
             <button class="seg-btn" data-val="SCALP">SCALP</button>
           </div>
@@ -473,8 +472,7 @@
         <div>
           <div class="modal-section-label">Symbol</div>
           <div class="seg-group" id="noteSymbolGroup">
-            <button class="seg-btn active" data-val="None">None</button>
-            <button class="seg-btn" data-val="NQ">NQ</button>
+            <button class="seg-btn active" data-val="NQ">NQ</button>
             <button class="seg-btn" data-val="ES">ES</button>
             <button class="seg-btn" data-val="GC">GC</button>
           </div>
@@ -483,24 +481,21 @@
           <div style="flex:1">
             <div class="modal-section-label">Grade</div>
             <div class="seg-group" id="noteGradeGroup">
-              <button class="seg-btn active" data-val="">—</button>
-              <button class="seg-btn" data-val="+">+</button>
+              <button class="seg-btn active" data-val="+">+</button>
               <button class="seg-btn" data-val="-">−</button>
             </div>
           </div>
           <div style="flex:1">
             <div class="modal-section-label">Trend</div>
             <div class="seg-group" id="noteTrendGroup">
-              <button class="seg-btn active" data-val="None">None</button>
-              <button class="seg-btn" data-val="Long">Long</button>
+              <button class="seg-btn active" data-val="Long">Long</button>
               <button class="seg-btn" data-val="Short">Short</button>
             </div>
           </div>
           <div style="flex:1">
             <div class="modal-section-label">Direction</div>
             <div class="seg-group" id="noteDirectionGroup">
-              <button class="seg-btn active" data-val="None">None</button>
-              <button class="seg-btn" data-val="Long">Long</button>
+              <button class="seg-btn active" data-val="Long">Long</button>
               <button class="seg-btn" data-val="Short">Short</button>
             </div>
           </div>
@@ -777,11 +772,11 @@ function openNewModal() {
   document.getElementById('noteModalTitle').textContent = 'New Note'
   document.getElementById('noteDate').value = todayStr()
   setSeg('noteTypeGroup', 'Pre-Market')
-  setSeg('noteStrategyGroup', 'None')
-  setSeg('noteSymbolGroup', 'None')
-  setSeg('noteGradeGroup', '')
-  setSeg('noteTrendGroup', 'None')
-  setSeg('noteDirectionGroup', 'None')
+  setSeg('noteStrategyGroup', 'VWAP')
+  setSeg('noteSymbolGroup', 'NQ')
+  setSeg('noteGradeGroup', '+')
+  setSeg('noteTrendGroup', 'Long')
+  setSeg('noteDirectionGroup', 'Long')
   document.getElementById('noteTradeFields').style.display = 'none'
   document.getElementById('noteContent').value = ''
   document.getElementById('noteModal').classList.add('open')
@@ -792,11 +787,11 @@ function openEditModal(note) {
   document.getElementById('noteModalTitle').textContent = 'Edit Note'
   document.getElementById('noteDate').value = note.date
   setSeg('noteTypeGroup', note.type || 'Pre-Market')
-  setSeg('noteStrategyGroup', note.strategy || 'None')
-  setSeg('noteSymbolGroup', note.symbol || 'None')
-  setSeg('noteGradeGroup', note.grade || '')
-  setSeg('noteTrendGroup', note.trend || 'None')
-  setSeg('noteDirectionGroup', note.direction || 'None')
+  setSeg('noteStrategyGroup', note.strategy || 'VWAP')
+  setSeg('noteSymbolGroup', note.symbol || 'NQ')
+  setSeg('noteGradeGroup', note.grade || '+')
+  setSeg('noteTrendGroup', note.trend || 'Long')
+  setSeg('noteDirectionGroup', note.direction || 'Long')
   document.getElementById('noteTradeFields').style.display = note.type === 'Trade' ? 'flex' : 'none'
   document.getElementById('noteContent').value = note.content
   document.getElementById('noteModal').classList.add('open')

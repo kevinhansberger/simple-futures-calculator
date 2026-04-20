@@ -770,8 +770,8 @@
     .jn-seg-btn:last-child { border-right: none; }
     .jn-seg-btn.active { background: var(--buy); color: #000; }
     .jn-seg-btn.active-neg { background: var(--sell) !important; color: #fff !important; }
-    /* Calendar note dot */
-    .cal-note-dot { width: 5px; height: 5px; background: #fff; border-radius: 50%; margin: 2px auto 0; }
+    /* Calendar note dot — inline to the right of the date number */
+    .cal-note-dot { display: inline-block; width: 5px; height: 5px; background: #fff; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -1006,16 +1006,14 @@
       <div id="jnTradeFields">
         <div class="modal-section-label">Strategy</div>
         <div class="jn-seg-group" id="jnStrategyGroup">
-          <button class="jn-seg-btn active" data-val="None">None</button>
-          <button class="jn-seg-btn" data-val="VWAP">VWAP</button>
+          <button class="jn-seg-btn active" data-val="VWAP">VWAP</button>
           <button class="jn-seg-btn" data-val="LEVEL">LEVEL</button>
           <button class="jn-seg-btn" data-val="SCALP">SCALP</button>
         </div>
         <div style="margin-top:12px">
           <div class="modal-section-label">Symbol</div>
           <div class="jn-seg-group" id="jnSymbolGroup">
-            <button class="jn-seg-btn active" data-val="None">None</button>
-            <button class="jn-seg-btn" data-val="NQ">NQ</button>
+            <button class="jn-seg-btn active" data-val="NQ">NQ</button>
             <button class="jn-seg-btn" data-val="ES">ES</button>
             <button class="jn-seg-btn" data-val="GC">GC</button>
           </div>
@@ -1024,24 +1022,21 @@
           <div style="flex:1">
             <div class="modal-section-label">Grade</div>
             <div class="jn-seg-group" id="jnGradeGroup">
-              <button class="jn-seg-btn active" data-val="">—</button>
-              <button class="jn-seg-btn" data-val="+">+</button>
+              <button class="jn-seg-btn active" data-val="+">+</button>
               <button class="jn-seg-btn" data-val="-">−</button>
             </div>
           </div>
           <div style="flex:1">
             <div class="modal-section-label">Trend</div>
             <div class="jn-seg-group" id="jnTrendGroup">
-              <button class="jn-seg-btn active" data-val="None">None</button>
-              <button class="jn-seg-btn" data-val="Long">Long</button>
+              <button class="jn-seg-btn active" data-val="Long">Long</button>
               <button class="jn-seg-btn" data-val="Short">Short</button>
             </div>
           </div>
           <div style="flex:1">
             <div class="modal-section-label">Direction</div>
             <div class="jn-seg-group" id="jnDirectionGroup">
-              <button class="jn-seg-btn active" data-val="None">None</button>
-              <button class="jn-seg-btn" data-val="Long">Long</button>
+              <button class="jn-seg-btn active" data-val="Long">Long</button>
               <button class="jn-seg-btn" data-val="Short">Short</button>
             </div>
           </div>
@@ -1554,14 +1549,12 @@ function renderCalendar(trades) {
 
     const dateEl = document.createElement('div')
     dateEl.className = 'cal-date'
-    dateEl.textContent = d
-    el.appendChild(dateEl)
-
     if (noteDays.has(key)) {
-      const dot = document.createElement('div')
-      dot.className = 'cal-note-dot'
-      el.appendChild(dot)
+      dateEl.innerHTML = `${d}<span class="cal-note-dot"></span>`
+    } else {
+      dateEl.textContent = d
     }
+    el.appendChild(dateEl)
 
     if (info) {
       const pnlEl = document.createElement('div')
@@ -2465,11 +2458,11 @@ document.getElementById('addNoteBtn').addEventListener('click', () => {
   if (!selectedCalDay) return
   // Reset form
   jnSetSeg('jnTypeGroup', 'Pre-Market')
-  jnSetSeg('jnStrategyGroup', 'None')
-  jnSetSeg('jnSymbolGroup', 'None')
-  jnSetSeg('jnGradeGroup', '')
-  jnSetSeg('jnTrendGroup', 'None')
-  jnSetSeg('jnDirectionGroup', 'None')
+  jnSetSeg('jnStrategyGroup', 'VWAP')
+  jnSetSeg('jnSymbolGroup', 'NQ')
+  jnSetSeg('jnGradeGroup', '+')
+  jnSetSeg('jnTrendGroup', 'Long')
+  jnSetSeg('jnDirectionGroup', 'Long')
   document.getElementById('jnContent').value = ''
   document.getElementById('jnTradeFields').style.display = 'none'
   const [y,m,d] = selectedCalDay.split('-')

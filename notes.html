@@ -53,6 +53,22 @@
       box-shadow: 0 2px 12px #0007;
     }
 
+    header svg { width: 28px; height: 28px; flex-shrink: 0; }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #fff;
+    }
+
+    .hdr-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .back-btn {
       background: rgba(255,255,255,.12);
       border: 1px solid rgba(255,255,255,.2);
@@ -65,14 +81,6 @@
       cursor: pointer;
     }
     .back-btn:hover { background: rgba(255,255,255,.2); }
-
-    header h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: #fff;
-      flex: 1;
-    }
 
     .hdr-icon-btn {
       background: rgba(255,255,255,.12);
@@ -380,10 +388,16 @@
 <body>
 
 <header>
-  <button class="back-btn" onclick="history.back()">← Journal</button>
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <rect width="512" height="512" rx="80" fill="#0f3460"/>
+    <polyline points="60,400 180,260 280,320 420,120" fill="none" stroke="#00d4aa" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
   <h1>Trading Notes</h1>
-  <button class="hdr-icon-btn" id="syncBtn" title="Import notes from CSV">↻</button>
-  <button class="hdr-icon-btn" id="downloadBtn" title="Download notes">↓</button>
+  <div class="hdr-right">
+    <button class="hdr-icon-btn" id="downloadBtn" title="Download notes">↓</button>
+    <button class="hdr-icon-btn" id="syncBtn" title="Import notes from CSV">↻</button>
+    <button class="back-btn" onclick="history.back()">← Journal</button>
+  </div>
   <input type="file" id="syncFileInput" accept=".csv,.md" style="display:none">
 </header>
 

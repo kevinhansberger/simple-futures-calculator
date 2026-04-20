@@ -87,14 +87,14 @@
       border: 1px solid rgba(255,255,255,.2);
       color: #e0e0e0;
       border-radius: 8px;
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 1.1rem;
       flex-shrink: 0;
+      padding: 0;
     }
     .hdr-icon-btn:hover { background: rgba(255,255,255,.22); }
 
@@ -394,8 +394,29 @@
   </svg>
   <h1>Trading Notes</h1>
   <div class="hdr-right">
-    <button class="hdr-icon-btn" id="downloadBtn" title="Download notes">↓</button>
-    <button class="hdr-icon-btn" id="syncBtn" title="Import notes from CSV">↻</button>
+    <button class="hdr-icon-btn" id="downloadBtn" title="Download Notes" aria-label="Download Notes">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </button>
+    <button class="hdr-icon-btn" id="syncBtn" title="Import Notes" aria-label="Import Notes">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+    </button>
+    <button class="hdr-icon-btn" id="clearNotesBtn" title="Clear Notes" aria-label="Clear Notes">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+    </button>
     <button class="back-btn" onclick="history.back()">← Journal</button>
   </div>
   <input type="file" id="syncFileInput" accept=".csv,.md" style="display:none">
@@ -906,6 +927,15 @@ function triggerDownload(content, filename, mimeType) {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+// ── Clear all notes ───────────────────────────────────────────────────────────
+document.getElementById('clearNotesBtn').addEventListener('click', () => {
+  const notes = loadNotes()
+  if (notes.length === 0) { alert('No notes to clear.'); return }
+  if (!confirm(`Delete all ${notes.length} note${notes.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+  saveNotes([])
+  renderNotes()
+})
 
 // ── Sync (import CSV) ─────────────────────────────────────────────────────────
 document.getElementById('syncBtn').addEventListener('click', () => {

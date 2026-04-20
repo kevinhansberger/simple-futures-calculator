@@ -1,8 +1,9 @@
-const CACHE_NAME = 'notes_1'
+const CACHE_NAME = 'tofx3-v4'
 const ASSETS = [
   './',
   './index.html',
   './journal.html',
+  './notes.html',
   './manifest.json',
   './icon.svg',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js',

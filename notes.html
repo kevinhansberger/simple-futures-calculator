@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f3460">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Trading Notes — Futures Calc</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #e8e8e8;
+      --card:      #1a1a2e;
+      --border:    #2a2a4a;
+      --accent:    #0f3460;
+      --buy:       #00d4aa;
+      --sell:      #e94560;
+      --warn:      #f5a623;
+      --text:      #e0e0e0;
+      --text-dim:  #888;
+      --input-bg:  #0d1117;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.4;
+      min-height: 100dvh;
+      padding-bottom: calc(env(safe-area-inset-bottom, 24px) + 80px);
+    }
+
+    body { scrollbar-width: none; }
+    body::-webkit-scrollbar { display: none; }
+
+    /* ── Header ── */
+    header {
+      background: var(--accent);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 12px #0007;
+    }
+
+    .back-btn {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      color: #e0e0e0;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: .8rem;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.2); }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #fff;
+      flex: 1;
+    }
+
+    .hdr-icon-btn {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      color: #e0e0e0;
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .hdr-icon-btn:hover { background: rgba(255,255,255,.22); }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      position: sticky;
+      top: 64px;
+      z-index: 10;
+      scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+
+    .filter-chip {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .filter-chip:hover { border-color: var(--buy); color: var(--text); }
+    .filter-chip.active {
+      background: var(--buy);
+      border-color: var(--buy);
+      color: #000;
+    }
+
+    /* ── Page content ── */
+    .page { max-width: 800px; margin: 0 auto; padding: 16px; }
+
+    /* ── Date group ── */
+    .date-group { margin-bottom: 24px; }
+    .date-group-header {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0 4px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    /* ── Note card ── */
+    .note-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+
+    .note-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .badge-type-pre    { background: rgba(245,166,35,.15); color: var(--warn); border: 1px solid var(--warn); }
+    .badge-type-trade  { background: rgba(0,212,170,.12); color: var(--buy);  border: 1px solid var(--buy); }
+    .badge-type-post   { background: rgba(167,105,209,.15); color: #c07fde; border: 1px solid #c07fde; }
+    .badge-strategy    { background: rgba(255,255,255,.08); color: var(--text-dim); border: 1px solid var(--border); }
+    .badge-symbol      { background: rgba(15,52,96,.5); color: #7ab3e0; border: 1px solid #2a5080; }
+    .badge-grade-pos   { background: rgba(0,212,170,.15); color: var(--buy);  border: 1px solid var(--buy); }
+    .badge-grade-neg   { background: rgba(233,69,96,.15); color: var(--sell); border: 1px solid var(--sell); }
+    .badge-trend       { background: rgba(255,255,255,.06); color: var(--text-dim); border: 1px solid var(--border); }
+    .badge-direction   { background: rgba(255,255,255,.06); color: var(--text-dim); border: 1px solid var(--border); }
+
+    .note-content {
+      font-size: .88rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .note-screenshot-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: .78rem;
+      color: var(--buy);
+      text-decoration: none;
+    }
+    .note-screenshot-link:hover { text-decoration: underline; }
+
+    .note-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .note-action-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: .75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .note-action-btn:hover { border-color: var(--buy); color: var(--buy); }
+    .note-action-btn.del:hover { border-color: var(--sell); color: var(--sell); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+    .empty-state svg { opacity: .3; margin-bottom: 12px; }
+    .empty-state p { font-size: .9rem; }
+
+    /* ── FAB ── */
+    .fab {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 16px) + 20px);
+      right: 20px;
+      background: var(--buy);
+      color: #000;
+      border: none;
+      border-radius: 28px;
+      padding: 14px 22px;
+      font-size: .9rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,212,170,.4);
+      z-index: 50;
+      white-space: nowrap;
+    }
+    .fab:hover { filter: brightness(1.1); }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 560px;
+      max-height: 92dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 16px 48px #000a;
+    }
+    .modal-header {
+      background: var(--accent);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-header h2 { font-size: .85rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .modal-close {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.2);
+      color: #fff;
+      border-radius: 6px;
+      width: 28px; height: 28px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .modal-close:hover { background: rgba(255,255,255,.22); }
+    .modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .modal-section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .modal-btn {
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .modal-btn.save   { background: var(--buy); color: #000; }
+    .modal-btn.cancel { background: transparent; border: 1px solid #555; color: #999; }
+    .modal-btn:hover  { filter: brightness(1.15); }
+
+    /* ── Date input ── */
+    .modal-date-input {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .88rem;
+      font-family: inherit;
+      padding: 9px 12px;
+      color-scheme: dark;
+    }
+    .modal-date-input:focus { outline: none; border-color: var(--buy); }
+
+    /* ── Segmented controls ── */
+    .seg-group { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .seg-btn { flex: 1; background: none; border: none; border-right: 1px solid var(--border); color: var(--text-dim); padding: 8px 4px; font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .seg-btn:last-child { border-right: none; }
+    .seg-btn.active { background: var(--buy); color: #000; }
+    .seg-btn.active-neg { background: var(--sell) !important; color: #fff !important; }
+
+    /* ── Textarea ── */
+    .modal-textarea {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .88rem;
+      font-family: inherit;
+      line-height: 1.65;
+      padding: 10px 12px;
+      resize: vertical;
+      min-height: 200px;
+      display: block;
+    }
+    .modal-textarea:focus { outline: none; border-color: var(--buy); }
+
+    /* ── Download modal ── */
+    .dl-btn {
+      width: 100%;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: background .15s;
+    }
+    .dl-btn:hover { background: rgba(15,52,96,.8); border-color: var(--buy); }
+  </style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="history.back()">← Journal</button>
+  <h1>Trading Notes</h1>
+  <button class="hdr-icon-btn" id="syncBtn" title="Import notes from CSV">↻</button>
+  <button class="hdr-icon-btn" id="downloadBtn" title="Download notes">↓</button>
+  <input type="file" id="syncFileInput" accept=".csv,.md" style="display:none">
+</header>
+
+<!-- Filter bar -->
+<div class="filter-bar" id="filterBar">
+  <button class="filter-chip active" data-filter="All">All</button>
+  <button class="filter-chip" data-filter="Pre-Market">Pre-Market</button>
+  <button class="filter-chip" data-filter="Trade">Trade</button>
+  <button class="filter-chip" data-filter="Post-Session">Post-Session</button>
+  <button class="filter-chip" data-filter="VWAP">VWAP</button>
+  <button class="filter-chip" data-filter="LEVEL">LEVEL</button>
+  <button class="filter-chip" data-filter="SCALP">SCALP</button>
+</div>
+
+<div class="page" id="notesPage"></div>
+
+<button class="fab" id="newNoteBtn">+ New Note</button>
+
+<!-- New / Edit Note Modal -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="noteModalTitle">New Note</h2>
+      <button class="modal-close" id="noteModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <div class="modal-section-label">Date</div>
+        <input type="date" class="modal-date-input" id="noteDate">
+      </div>
+      <div>
+        <div class="modal-section-label">Type</div>
+        <div class="seg-group" id="noteTypeGroup">
+          <button class="seg-btn active" data-val="Pre-Market">Pre-Market</button>
+          <button class="seg-btn" data-val="Trade">Trade</button>
+          <button class="seg-btn" data-val="Post-Session">Post-Session</button>
+        </div>
+      </div>
+      <div id="noteTradeFields" style="display:none;flex-direction:column;gap:16px">
+        <div>
+          <div class="modal-section-label">Strategy</div>
+          <div class="seg-group" id="noteStrategyGroup">
+            <button class="seg-btn active" data-val="None">None</button>
+            <button class="seg-btn" data-val="VWAP">VWAP</button>
+            <button class="seg-btn" data-val="LEVEL">LEVEL</button>
+            <button class="seg-btn" data-val="SCALP">SCALP</button>
+          </div>
+        </div>
+        <div>
+          <div class="modal-section-label">Symbol</div>
+          <div class="seg-group" id="noteSymbolGroup">
+            <button class="seg-btn active" data-val="None">None</button>
+            <button class="seg-btn" data-val="NQ">NQ</button>
+            <button class="seg-btn" data-val="ES">ES</button>
+            <button class="seg-btn" data-val="GC">GC</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <div class="modal-section-label">Grade</div>
+            <div class="seg-group" id="noteGradeGroup">
+              <button class="seg-btn active" data-val="">—</button>
+              <button class="seg-btn" data-val="+">+</button>
+              <button class="seg-btn" data-val="-">−</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="modal-section-label">Trend</div>
+            <div class="seg-group" id="noteTrendGroup">
+              <button class="seg-btn active" data-val="None">None</button>
+              <button class="seg-btn" data-val="Long">Long</button>
+              <button class="seg-btn" data-val="Short">Short</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="modal-section-label">Direction</div>
+            <div class="seg-group" id="noteDirectionGroup">
+              <button class="seg-btn active" data-val="None">None</button>
+              <button class="seg-btn" data-val="Long">Long</button>
+              <button class="seg-btn" data-val="Short">Short</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="modal-section-label">Content</div>
+        <textarea class="modal-textarea" id="noteContent" placeholder="Write your note..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" id="noteModalCancel">Cancel</button>
+      <button class="modal-btn save" id="noteModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Download Modal -->
+<div class="modal-overlay" id="downloadModal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h2>Download Notes</h2>
+      <button class="modal-close" id="downloadClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <button class="dl-btn" id="dlCsvBtn">Download as CSV</button>
+      <button class="dl-btn" id="dlMdBtn">Download as Markdown</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Storage & helpers ─────────────────────────────────────────────────────────
+const NOTES_KEY = 'jrnl_trading_notes_v1'
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2) }
+
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]') } catch { return [] }
+}
+
+function saveNotes(notes) {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes))
+}
+
+// ── Trade template ────────────────────────────────────────────────────────────
+const TRADE_TEMPLATE = `Theory:
+ATR:
+QTY:
+Entry:
+Exit:
+Drawdown:
+Hit TP1:
+Hit TP2:
+Hit TP3:
+P&L:
+TradingView Screenshot:`
+
+// ── Filter state ─────────────────────────────────────────────────────────────
+let activeFilter = 'All'
+
+// ── Segmented control helpers ─────────────────────────────────────────────────
+function getSeg(gid) {
+  const a = document.querySelector(`#${gid} .seg-btn.active`)
+  return a ? a.dataset.val : ''
+}
+
+function setSeg(gid, val) {
+  document.querySelectorAll(`#${gid} .seg-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.val === val)
+    if (gid === 'noteGradeGroup') b.classList.toggle('active-neg', b.dataset.val === '-' && val === '-')
+  })
+}
+
+// Wire all seg groups
+;['noteTypeGroup','noteStrategyGroup','noteSymbolGroup','noteGradeGroup','noteTrendGroup','noteDirectionGroup'].forEach(gid => {
+  document.querySelectorAll(`#${gid} .seg-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`#${gid} .seg-btn`).forEach(b => b.classList.remove('active','active-neg'))
+      btn.classList.add('active')
+      if (gid === 'noteGradeGroup' && btn.dataset.val === '-') btn.classList.add('active-neg')
+      if (gid === 'noteTypeGroup') {
+        const isTrade = btn.dataset.val === 'Trade'
+        document.getElementById('noteTradeFields').style.display = isTrade ? 'flex' : 'none'
+        const ta = document.getElementById('noteContent')
+        if (isTrade && !ta.value.trim()) ta.value = TRADE_TEMPLATE
+        else if (!isTrade && ta.value === TRADE_TEMPLATE) ta.value = ''
+      }
+    })
+  })
+})
+
+// ── Format date for display ───────────────────────────────────────────────────
+function fmtDateHeader(dateStr) {
+  const [y,m,d] = dateStr.split('-')
+  const dt = new Date(+y, +m-1, +d)
+  return dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }).toUpperCase()
+}
+
+// ── Extract screenshot URL from content ──────────────────────────────────────
+function extractScreenshotUrl(content) {
+  const m = content.match(/TradingView Screenshot:\s*(https?:\/\/\S+)/i)
+  return m ? m[1] : null
+}
+
+// ── Render notes list ─────────────────────────────────────────────────────────
+function renderNotes() {
+  const notes = loadNotes()
+  const page = document.getElementById('notesPage')
+
+  // Filter
+  const filtered = notes.filter(n => {
+    if (activeFilter === 'All') return true
+    if (activeFilter === 'Pre-Market') return n.type === 'Pre-Market'
+    if (activeFilter === 'Trade') return n.type === 'Trade'
+    if (activeFilter === 'Post-Session') return n.type === 'Post-Session'
+    // Strategy filters (VWAP, LEVEL, SCALP)
+    return n.type === 'Trade' && n.strategy === activeFilter
+  })
+
+  if (!filtered.length) {
+    page.innerHTML = `
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <p>No notes yet. Tap <strong>+ New Note</strong> to get started.</p>
+      </div>`
+    return
+  }
+
+  // Sort newest first, group by date
+  const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+  const groups = {}
+  for (const n of sorted) {
+    if (!groups[n.date]) groups[n.date] = []
+    groups[n.date].push(n)
+  }
+
+  page.innerHTML = ''
+
+  for (const [date, group] of Object.entries(groups)) {
+    const groupEl = document.createElement('div')
+    groupEl.className = 'date-group'
+
+    const hdr = document.createElement('div')
+    hdr.className = 'date-group-header'
+    hdr.textContent = fmtDateHeader(date)
+    groupEl.appendChild(hdr)
+
+    for (const note of group) {
+      groupEl.appendChild(buildNoteCard(note))
+    }
+
+    page.appendChild(groupEl)
+  }
+}
+
+function buildNoteCard(note) {
+  const card = document.createElement('div')
+  card.className = 'note-card'
+
+  // Badge row
+  const badges = document.createElement('div')
+  badges.className = 'note-badges'
+
+  const typeBadge = document.createElement('span')
+  typeBadge.className = 'badge ' + (note.type === 'Pre-Market' ? 'badge-type-pre' : note.type === 'Trade' ? 'badge-type-trade' : 'badge-type-post')
+  typeBadge.textContent = note.type
+  badges.appendChild(typeBadge)
+
+  if (note.type === 'Trade') {
+    if (note.strategy && note.strategy !== 'None') {
+      const b = document.createElement('span')
+      b.className = 'badge badge-strategy'
+      b.textContent = note.strategy
+      badges.appendChild(b)
+    }
+    if (note.symbol && note.symbol !== 'None') {
+      const b = document.createElement('span')
+      b.className = 'badge badge-symbol'
+      b.textContent = note.symbol
+      badges.appendChild(b)
+    }
+    if (note.grade) {
+      const b = document.createElement('span')
+      b.className = 'badge ' + (note.grade === '+' ? 'badge-grade-pos' : 'badge-grade-neg')
+      b.textContent = note.grade
+      badges.appendChild(b)
+    }
+    if (note.trend && note.trend !== 'None') {
+      const b = document.createElement('span')
+      b.className = 'badge badge-trend'
+      b.textContent = 'Trend: ' + note.trend
+      badges.appendChild(b)
+    }
+    if (note.direction && note.direction !== 'None') {
+      const b = document.createElement('span')
+      b.className = 'badge badge-direction'
+      b.textContent = 'Dir: ' + note.direction
+      badges.appendChild(b)
+    }
+  }
+
+  card.appendChild(badges)
+
+  // Content
+  const content = document.createElement('div')
+  content.className = 'note-content'
+  content.textContent = note.content
+  card.appendChild(content)
+
+  // Screenshot link
+  const ssUrl = extractScreenshotUrl(note.content)
+  if (ssUrl) {
+    const link = document.createElement('a')
+    link.className = 'note-screenshot-link'
+    link.href = ssUrl
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.textContent = 'Open Screenshot ↗'
+    card.appendChild(link)
+  }
+
+  // Edit + Delete
+  const actions = document.createElement('div')
+  actions.className = 'note-actions'
+
+  const editBtn = document.createElement('button')
+  editBtn.className = 'note-action-btn'
+  editBtn.textContent = 'Edit'
+  editBtn.addEventListener('click', () => openEditModal(note))
+
+  const delBtn = document.createElement('button')
+  delBtn.className = 'note-action-btn del'
+  delBtn.textContent = 'Delete'
+  delBtn.addEventListener('click', () => {
+    if (!confirm('Delete this note?')) return
+    const notes = loadNotes().filter(n => n.id !== note.id)
+    saveNotes(notes)
+    renderNotes()
+  })
+
+  actions.appendChild(editBtn)
+  actions.appendChild(delBtn)
+  card.appendChild(actions)
+
+  return card
+}
+
+// ── Filter chips ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'))
+    chip.classList.add('active')
+    activeFilter = chip.dataset.filter
+    renderNotes()
+  })
+})
+
+// ── Modal state ───────────────────────────────────────────────────────────────
+let editingNoteId = null
+
+function openNewModal() {
+  editingNoteId = null
+  document.getElementById('noteModalTitle').textContent = 'New Note'
+  document.getElementById('noteDate').value = todayStr()
+  setSeg('noteTypeGroup', 'Pre-Market')
+  setSeg('noteStrategyGroup', 'None')
+  setSeg('noteSymbolGroup', 'None')
+  setSeg('noteGradeGroup', '')
+  setSeg('noteTrendGroup', 'None')
+  setSeg('noteDirectionGroup', 'None')
+  document.getElementById('noteTradeFields').style.display = 'none'
+  document.getElementById('noteContent').value = ''
+  document.getElementById('noteModal').classList.add('open')
+}
+
+function openEditModal(note) {
+  editingNoteId = note.id
+  document.getElementById('noteModalTitle').textContent = 'Edit Note'
+  document.getElementById('noteDate').value = note.date
+  setSeg('noteTypeGroup', note.type || 'Pre-Market')
+  setSeg('noteStrategyGroup', note.strategy || 'None')
+  setSeg('noteSymbolGroup', note.symbol || 'None')
+  setSeg('noteGradeGroup', note.grade || '')
+  setSeg('noteTrendGroup', note.trend || 'None')
+  setSeg('noteDirectionGroup', note.direction || 'None')
+  document.getElementById('noteTradeFields').style.display = note.type === 'Trade' ? 'flex' : 'none'
+  document.getElementById('noteContent').value = note.content
+  document.getElementById('noteModal').classList.add('open')
+}
+
+function closeNoteModal() {
+  document.getElementById('noteModal').classList.remove('open')
+  editingNoteId = null
+}
+
+document.getElementById('newNoteBtn').addEventListener('click', openNewModal)
+document.getElementById('noteModalClose').addEventListener('click', closeNoteModal)
+document.getElementById('noteModalCancel').addEventListener('click', closeNoteModal)
+document.getElementById('noteModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeNoteModal() })
+
+document.getElementById('noteModalSave').addEventListener('click', () => {
+  const date = document.getElementById('noteDate').value
+  const content = document.getElementById('noteContent').value.trim()
+  if (!date) { alert('Please select a date.'); return }
+  if (!content) { alert('Please write some content.'); return }
+
+  const type = getSeg('noteTypeGroup') || 'Pre-Market'
+  const isTrade = type === 'Trade'
+  const now = new Date().toISOString()
+
+  let notes = loadNotes()
+
+  if (editingNoteId) {
+    const idx = notes.findIndex(n => n.id === editingNoteId)
+    if (idx !== -1) {
+      notes[idx] = {
+        ...notes[idx],
+        date, type,
+        strategy:  isTrade ? (getSeg('noteStrategyGroup') || 'None') : 'None',
+        symbol:    isTrade ? (getSeg('noteSymbolGroup')   || 'None') : 'None',
+        grade:     isTrade ? (getSeg('noteGradeGroup')    || '')     : '',
+        trend:     isTrade ? (getSeg('noteTrendGroup')    || 'None') : 'None',
+        direction: isTrade ? (getSeg('noteDirectionGroup')|| 'None') : 'None',
+        content, updatedAt: now
+      }
+    }
+  } else {
+    notes.push({
+      id: genId(), date, type,
+      strategy:  isTrade ? (getSeg('noteStrategyGroup') || 'None') : 'None',
+      symbol:    isTrade ? (getSeg('noteSymbolGroup')   || 'None') : 'None',
+      grade:     isTrade ? (getSeg('noteGradeGroup')    || '')     : '',
+      trend:     isTrade ? (getSeg('noteTrendGroup')    || 'None') : 'None',
+      direction: isTrade ? (getSeg('noteDirectionGroup')|| 'None') : 'None',
+      content, createdAt: now, updatedAt: now
+    })
+  }
+
+  saveNotes(notes)
+  closeNoteModal()
+  renderNotes()
+})
+
+// ── Download ──────────────────────────────────────────────────────────────────
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  document.getElementById('downloadModal').classList.add('open')
+})
+document.getElementById('downloadClose').addEventListener('click', () => {
+  document.getElementById('downloadModal').classList.remove('open')
+})
+document.getElementById('downloadModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('downloadModal').classList.remove('open')
+})
+
+function escCsvField(val) {
+  if (val == null) return '""'
+  const s = String(val).replace(/"/g, '""')
+  return `"${s}"`
+}
+
+document.getElementById('dlCsvBtn').addEventListener('click', () => {
+  const notes = loadNotes()
+  const header = 'id,date,type,strategy,symbol,grade,trend,direction,content,createdAt,updatedAt'
+  const rows = notes.map(n => [
+    escCsvField(n.id), escCsvField(n.date), escCsvField(n.type),
+    escCsvField(n.strategy), escCsvField(n.symbol), escCsvField(n.grade),
+    escCsvField(n.trend), escCsvField(n.direction), escCsvField(n.content),
+    escCsvField(n.createdAt), escCsvField(n.updatedAt)
+  ].join(','))
+  const csv = [header, ...rows].join('\r\n')
+  triggerDownload(csv, `trading-notes-${todayStr()}.csv`, 'text/csv')
+  document.getElementById('downloadModal').classList.remove('open')
+})
+
+document.getElementById('dlMdBtn').addEventListener('click', () => {
+  const notes = loadNotes()
+  if (!notes.length) { alert('No notes to export.'); return }
+
+  const sorted = [...notes].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+  const groups = {}
+  for (const n of sorted) {
+    if (!groups[n.date]) groups[n.date] = []
+    groups[n.date].push(n)
+  }
+
+  const lines = []
+  for (const [date, group] of Object.entries(groups)) {
+    lines.push(`## ${fmtDateHeader(date)}`)
+    lines.push('')
+    for (const n of group) {
+      const parts = [n.type]
+      if (n.strategy && n.strategy !== 'None') parts.push(n.strategy)
+      if (n.symbol && n.symbol !== 'None') parts.push(n.symbol)
+      if (n.grade) parts.push(n.grade)
+      if (n.trend && n.trend !== 'None') parts.push('Trend:' + n.trend)
+      if (n.direction && n.direction !== 'None') parts.push('Dir:' + n.direction)
+      lines.push(`### ${parts.join(' · ')}`)
+      lines.push('')
+      lines.push(n.content)
+      lines.push('')
+    }
+  }
+
+  triggerDownload(lines.join('\n'), `trading-notes-${todayStr()}.md`, 'text/markdown')
+  document.getElementById('downloadModal').classList.remove('open')
+})
+
+function triggerDownload(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ── Sync (import CSV) ─────────────────────────────────────────────────────────
+document.getElementById('syncBtn').addEventListener('click', () => {
+  document.getElementById('syncFileInput').click()
+})
+
+document.getElementById('syncFileInput').addEventListener('change', e => {
+  const file = e.target.files[0]
+  if (!file) return
+  e.target.value = ''
+  const reader = new FileReader()
+  reader.onload = ev => {
+    const text = ev.target.result
+    importFromCsv(text)
+  }
+  reader.readAsText(file)
+})
+
+function parseCsvLine(line) {
+  const fields = []
+  let cur = '', inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++ }
+      else inQ = !inQ
+    } else if (c === ',' && !inQ) {
+      fields.push(cur); cur = ''
+    } else {
+      cur += c
+    }
+  }
+  fields.push(cur)
+  return fields
+}
+
+function importFromCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) { alert('No data found in CSV.'); return }
+
+  const header = parseCsvLine(lines[0]).map(h => h.trim())
+  const col = name => header.indexOf(name)
+
+  const existing = loadNotes()
+  const existingIds = new Set(existing.map(n => n.id))
+
+  let added = 0, dupes = 0
+
+  for (let i = 1; i < lines.length; i++) {
+    const fields = parseCsvLine(lines[i])
+    const get = name => {
+      const idx = col(name)
+      return idx >= 0 ? (fields[idx] || '').trim() : ''
+    }
+    const id = get('id')
+    if (!id) continue
+    if (existingIds.has(id)) { dupes++; continue }
+
+    existing.push({
+      id,
+      date:      get('date')      || todayStr(),
+      type:      get('type')      || 'Pre-Market',
+      strategy:  get('strategy')  || 'None',
+      symbol:    get('symbol')    || 'None',
+      grade:     get('grade')     || '',
+      trend:     get('trend')     || 'None',
+      direction: get('direction') || 'None',
+      content:   get('content')   || '',
+      createdAt: get('createdAt') || new Date().toISOString(),
+      updatedAt: get('updatedAt') || new Date().toISOString(),
+    })
+    added++
+  }
+
+  saveNotes(existing)
+  renderNotes()
+  alert(`Sync complete: ${added} new note(s) imported, ${dupes} duplicate(s) skipped.`)
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderNotes()
+</script>
+</body>
+</html>

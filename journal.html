@@ -763,6 +763,15 @@
     .trades-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
     .trades-wrap::-webkit-scrollbar-track { background: transparent; }
     .trades-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Journal Note Modal ── */
+    .jn-seg-group { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .jn-seg-btn { flex: 1; background: none; border: none; border-right: 1px solid var(--border); color: var(--text-dim); padding: 7px 4px; font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .jn-seg-btn:last-child { border-right: none; }
+    .jn-seg-btn.active { background: var(--buy); color: #000; }
+    .jn-seg-btn.active-neg { background: var(--sell) !important; color: #fff !important; }
+    /* Calendar note dot */
+    .cal-note-dot { width: 5px; height: 5px; background: #fff; border-radius: 50%; margin: 2px auto 0; }
   </style>
 </head>
 <body>
@@ -849,7 +858,10 @@
 
   <!-- Trades table -->
   <div class="card">
-    <div class="card-header">Trades</div>
+    <div class="card-header" style="justify-content:space-between;align-items:center">
+      Trades
+      <button id="addNoteBtn" style="display:none;background:var(--buy);color:#000;border:none;border-radius:6px;padding:4px 12px;font-size:.75rem;font-weight:700;cursor:pointer">+ Note</button>
+    </div>
     <div class="card-body" style="padding:0">
       <div class="trades-wrap">
         <table id="tradesTable">
@@ -967,6 +979,82 @@
       <button class="modal-btn cancel" id="lockCancel" style="display:none">Cancel</button>
       <button class="modal-btn edit" id="lockEdit">Edit</button>
       <button class="modal-btn save" id="lockSave" style="display:none">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Note Modal (from calendar) -->
+<div class="modal-overlay" id="addNoteOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="addNoteModalTitle">Add Note</h2>
+      <button class="modal-close" id="addNoteClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <div class="modal-section-label">Date</div>
+        <div id="addNoteDate" style="font-size:.9rem;color:var(--text);padding:4px 0"></div>
+      </div>
+      <div>
+        <div class="modal-section-label">Type</div>
+        <div class="jn-seg-group" id="jnTypeGroup">
+          <button class="jn-seg-btn active" data-val="Pre-Market">Pre-Market</button>
+          <button class="jn-seg-btn" data-val="Trade">Trade</button>
+          <button class="jn-seg-btn" data-val="Post-Session">Post-Session</button>
+        </div>
+      </div>
+      <div id="jnTradeFields">
+        <div class="modal-section-label">Strategy</div>
+        <div class="jn-seg-group" id="jnStrategyGroup">
+          <button class="jn-seg-btn active" data-val="None">None</button>
+          <button class="jn-seg-btn" data-val="VWAP">VWAP</button>
+          <button class="jn-seg-btn" data-val="LEVEL">LEVEL</button>
+          <button class="jn-seg-btn" data-val="SCALP">SCALP</button>
+        </div>
+        <div style="margin-top:12px">
+          <div class="modal-section-label">Symbol</div>
+          <div class="jn-seg-group" id="jnSymbolGroup">
+            <button class="jn-seg-btn active" data-val="None">None</button>
+            <button class="jn-seg-btn" data-val="NQ">NQ</button>
+            <button class="jn-seg-btn" data-val="ES">ES</button>
+            <button class="jn-seg-btn" data-val="GC">GC</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <div style="flex:1">
+            <div class="modal-section-label">Grade</div>
+            <div class="jn-seg-group" id="jnGradeGroup">
+              <button class="jn-seg-btn active" data-val="">—</button>
+              <button class="jn-seg-btn" data-val="+">+</button>
+              <button class="jn-seg-btn" data-val="-">−</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="modal-section-label">Trend</div>
+            <div class="jn-seg-group" id="jnTrendGroup">
+              <button class="jn-seg-btn active" data-val="None">None</button>
+              <button class="jn-seg-btn" data-val="Long">Long</button>
+              <button class="jn-seg-btn" data-val="Short">Short</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="modal-section-label">Direction</div>
+            <div class="jn-seg-group" id="jnDirectionGroup">
+              <button class="jn-seg-btn active" data-val="None">None</button>
+              <button class="jn-seg-btn" data-val="Long">Long</button>
+              <button class="jn-seg-btn" data-val="Short">Short</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="modal-section-label">Notes</div>
+        <textarea class="modal-textarea" id="jnContent" placeholder="Write your note..." style="min-height:180px;display:block"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" id="addNoteCancel" style="display:block">Cancel</button>
+      <button class="modal-btn save" id="addNoteSave" style="display:block">Save</button>
     </div>
   </div>
 </div>
@@ -1422,6 +1510,10 @@ function renderCalendar(trades) {
     if (t.pnl > 0) dayMap[key].wins++
   }
 
+  let calNotes = []
+  try { calNotes = JSON.parse(localStorage.getItem('jrnl_trading_notes_v1') || '[]') } catch {}
+  const noteDays = new Set(calNotes.map(n => n.date))
+
   const grid = document.getElementById('calGrid')
   grid.innerHTML = ''
 
@@ -1458,11 +1550,18 @@ function renderCalendar(trades) {
 
     const el = document.createElement('div')
     el.className = 'cal-cell' + (info ? (info.pnl >= 0 ? ' win has-trades' : ' loss has-trades') : '')
+    el.style.cursor = 'pointer'
 
     const dateEl = document.createElement('div')
     dateEl.className = 'cal-date'
     dateEl.textContent = d
     el.appendChild(dateEl)
+
+    if (noteDays.has(key)) {
+      const dot = document.createElement('div')
+      dot.className = 'cal-note-dot'
+      el.appendChild(dot)
+    }
 
     if (info) {
       const pnlEl = document.createElement('div')
@@ -1476,19 +1575,20 @@ function renderCalendar(trades) {
       el.appendChild(metaEl)
 
       weekPnl += info.pnl
-
-      // Click to filter Recent Trades to this day
-      el.addEventListener('click', () => {
-        selectedCalDay = selectedCalDay === key ? null : key
-        // Update selected highlight without full re-render
-        document.querySelectorAll('.cal-cell.selected').forEach(c => c.classList.remove('selected'))
-        if (selectedCalDay) el.classList.add('selected')
-        renderTable(selectedCalDay
-          ? filteredTrades().filter(t => t.dateKey === selectedCalDay)
-          : filteredTrades()
-        )
-      })
     }
+
+    // Click to select day (for trades filter + note button)
+    el.addEventListener('click', () => {
+      selectedCalDay = selectedCalDay === key ? null : key
+      document.getElementById('addNoteBtn').style.display = selectedCalDay ? 'block' : 'none'
+      // Update selected highlight without full re-render
+      document.querySelectorAll('.cal-cell.selected').forEach(c => c.classList.remove('selected'))
+      if (selectedCalDay) el.classList.add('selected')
+      renderTable(selectedCalDay
+        ? filteredTrades().filter(t => t.dateKey === selectedCalDay)
+        : filteredTrades()
+      )
+    })
 
     if (selectedCalDay === key) el.classList.add('selected')
 
@@ -1992,6 +2092,7 @@ document.getElementById('calPrev').addEventListener('click', () => {
   calMonth--
   if (calMonth < 0) { calMonth = 11; calYear-- }
   selectedCalDay = null
+  document.getElementById('addNoteBtn').style.display = selectedCalDay ? 'block' : 'none'
   renderCalendar(filteredTrades())
   renderTable(filteredTrades())
 })
@@ -1999,6 +2100,7 @@ document.getElementById('calNext').addEventListener('click', () => {
   calMonth++
   if (calMonth > 11) { calMonth = 0; calYear++ }
   selectedCalDay = null
+  document.getElementById('addNoteBtn').style.display = selectedCalDay ? 'block' : 'none'
   renderCalendar(filteredTrades())
   renderTable(filteredTrades())
 })
@@ -2277,6 +2379,10 @@ newsOverlay.addEventListener('click', e => {
   if (e.target === newsOverlay) newsOverlay.classList.remove('open')
 })
 
+document.getElementById('monitorBtn').addEventListener('click', () => {
+  window.location.href = 'notes.html'
+})
+
 // ── Lock Notes Modal ─────────────────────────────────────────────────────────
 const LOCK_NOTES_KEY = 'jrnl_lock_notes_v1'
 const lockOverlay    = document.getElementById('lockOverlay')
@@ -2317,6 +2423,83 @@ lockSave.addEventListener('click', () => {
   localStorage.setItem(LOCK_NOTES_KEY, lockTextarea.value)
   loadLockNotes()
   setLockEditMode(false)
+})
+
+// ── Add Note from Calendar ────────────────────────────────────────────────────
+const NOTES_KEY_J = 'jrnl_trading_notes_v1'
+const JN_TRADE_TEMPLATE = `Theory:\nATR:\nQTY:\nEntry:\nExit:\nDrawdown:\nHit TP1:\nHit TP2:\nHit TP3:\nP&L:\nTradingView Screenshot:`
+
+function jnGenId() { return Date.now().toString(36) + Math.random().toString(36).slice(2) }
+function jnLoadNotes() { try { return JSON.parse(localStorage.getItem(NOTES_KEY_J) || '[]') } catch { return [] } }
+function jnSaveNotes(n) { localStorage.setItem(NOTES_KEY_J, JSON.stringify(n)) }
+
+function jnGetSeg(gid) {
+  const a = document.querySelector(`#${gid} .jn-seg-btn.active`)
+  return a ? a.dataset.val : ''
+}
+function jnSetSeg(gid, val) {
+  document.querySelectorAll(`#${gid} .jn-seg-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.val === val)
+    if (gid === 'jnGradeGroup') b.classList.toggle('active-neg', b.dataset.val === '-' && val === '-')
+  })
+}
+
+;['jnTypeGroup','jnStrategyGroup','jnSymbolGroup','jnGradeGroup','jnTrendGroup','jnDirectionGroup'].forEach(gid => {
+  document.querySelectorAll(`#${gid} .jn-seg-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`#${gid} .jn-seg-btn`).forEach(b => { b.classList.remove('active','active-neg') })
+      btn.classList.add('active')
+      if (gid === 'jnGradeGroup' && btn.dataset.val === '-') btn.classList.add('active-neg')
+      if (gid === 'jnTypeGroup') {
+        const isTrade = btn.dataset.val === 'Trade'
+        document.getElementById('jnTradeFields').style.display = isTrade ? 'block' : 'none'
+        const ta = document.getElementById('jnContent')
+        if (isTrade && !ta.value.trim()) ta.value = JN_TRADE_TEMPLATE
+        else if (!isTrade && ta.value === JN_TRADE_TEMPLATE) ta.value = ''
+      }
+    })
+  })
+})
+
+document.getElementById('addNoteBtn').addEventListener('click', () => {
+  if (!selectedCalDay) return
+  // Reset form
+  jnSetSeg('jnTypeGroup', 'Pre-Market')
+  jnSetSeg('jnStrategyGroup', 'None')
+  jnSetSeg('jnSymbolGroup', 'None')
+  jnSetSeg('jnGradeGroup', '')
+  jnSetSeg('jnTrendGroup', 'None')
+  jnSetSeg('jnDirectionGroup', 'None')
+  document.getElementById('jnContent').value = ''
+  document.getElementById('jnTradeFields').style.display = 'none'
+  const [y,m,d] = selectedCalDay.split('-')
+  const dt = new Date(+y, +m-1, +d)
+  document.getElementById('addNoteDate').textContent = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })
+  document.getElementById('addNoteOverlay').classList.add('open')
+})
+
+document.getElementById('addNoteClose').addEventListener('click', () => document.getElementById('addNoteOverlay').classList.remove('open'))
+document.getElementById('addNoteCancel').addEventListener('click', () => document.getElementById('addNoteOverlay').classList.remove('open'))
+document.getElementById('addNoteOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open') })
+
+document.getElementById('addNoteSave').addEventListener('click', () => {
+  const content = document.getElementById('jnContent').value.trim()
+  if (!content) { alert('Please write a note.'); return }
+  const type = jnGetSeg('jnTypeGroup') || 'Pre-Market'
+  const isTrade = type === 'Trade'
+  const notes = jnLoadNotes()
+  notes.push({
+    id: jnGenId(), date: selectedCalDay, type,
+    strategy:  isTrade ? (jnGetSeg('jnStrategyGroup') || 'None') : 'None',
+    symbol:    isTrade ? (jnGetSeg('jnSymbolGroup')   || 'None') : 'None',
+    grade:     isTrade ? (jnGetSeg('jnGradeGroup')    || '')     : '',
+    trend:     isTrade ? (jnGetSeg('jnTrendGroup')    || 'None') : 'None',
+    direction: isTrade ? (jnGetSeg('jnDirectionGroup')|| 'None') : 'None',
+    content, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  })
+  jnSaveNotes(notes)
+  document.getElementById('addNoteOverlay').classList.remove('open')
+  renderCalendar(filteredTrades()) // refresh dots
 })
 
 // ── Init ─────────────────────────────────────────────────────────────────────

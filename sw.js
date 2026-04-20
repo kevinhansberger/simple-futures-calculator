@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tofx3-v3'
+const CACHE_NAME = 'notes_1'
 const ASSETS = [
   './',
   './index.html',

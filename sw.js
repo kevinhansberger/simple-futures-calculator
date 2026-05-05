@@ -1,4 +1,4 @@
-const CACHE_NAME = '20260419b'
+const CACHE_NAME = '20260505a'
 const ASSETS = [
   './',
   './index.html',

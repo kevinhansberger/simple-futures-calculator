@@ -879,6 +879,7 @@
               <th>Exit</th>
               <th>Duration</th>
               <th>P&amp;L</th>
+              <th>Fee</th>
               <th>Account</th>
             </tr>
           </thead>
@@ -1098,6 +1099,7 @@
 // ── Storage keys ─────────────────────────────────────────────────────────────
 const STORE_KEY   = 'jrnl_trades_v1'
 const BALANCE_KEY = 'jrnl_balances_v1'
+const FEES_KEY    = 'jrnl_fees_v1'
 
 // ── Chart.js global defaults ─────────────────────────────────────────────────
 Chart.defaults.color = '#888'
@@ -1108,6 +1110,7 @@ Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", san
 let allTrades    = []        // raw parsed trades (all accounts)
 let activeAccts  = new Set() // 'all' or account strings
 let acctBalances = {}        // { '51859': 5000, ... }
+let acctFees     = {}        // { '51859': -1, ... }  fee per qty
 let calYear     = new Date().getFullYear()
 let calMonth    = new Date().getMonth() // 0-indexed
 let selectedCalDay = null // 'YYYY-MM-DD' or null
@@ -1133,6 +1136,18 @@ function loadBalances() {
 
 function saveBalances() {
   try { localStorage.setItem(BALANCE_KEY, JSON.stringify(acctBalances)) } catch {}
+}
+
+function loadFees() {
+  try { acctFees = JSON.parse(localStorage.getItem(FEES_KEY)) || {} } catch { acctFees = {} }
+}
+
+function saveFees() {
+  try { localStorage.setItem(FEES_KEY, JSON.stringify(acctFees)) } catch {}
+}
+
+function tradeFee(t) {
+  return (acctFees[t.account] || 0) * t.qty
 }
 
 // ── CSV Parsing ──────────────────────────────────────────────────────────────
@@ -1369,9 +1384,19 @@ function makeMenuItem(label, key, checked) {
   editBtn.title = 'Set initial balance'
   editBtn.type = 'button'
 
+  const feeBtn = document.createElement('button')
+  feeBtn.className = 'acct-edit-btn'
+  feeBtn.title = 'Set trading fee per qty'
+  feeBtn.type = 'button'
+  const isLucid = key.toLowerCase().includes('lucid')
+  if (acctFees[key] == null && isLucid) acctFees[key] = -1
+  const fmtFeeBtn = v => `${v < 0 ? '-' : '+'}$${Math.abs(v)}/qty`
+  feeBtn.textContent = acctFees[key] != null ? fmtFeeBtn(acctFees[key]) : 'Fee'
+
   row.appendChild(cb)
   row.appendChild(span)
   row.appendChild(editBtn)
+  row.appendChild(feeBtn)
   wrap.appendChild(row)
 
   // ── Inline balance editor (hidden until Edit clicked) ──
@@ -1422,6 +1447,54 @@ function makeMenuItem(label, key, checked) {
   balRow.appendChild(saveBtn)
   wrap.appendChild(balRow)
 
+  // ── Inline fee editor (hidden until Fee clicked) ──
+  const feeRow = document.createElement('div')
+  feeRow.className = 'acct-balance-row'
+
+  const feeLabel = document.createElement('label')
+  feeLabel.textContent = 'Fee per qty:'
+
+  const feeInput = document.createElement('input')
+  feeInput.className = 'acct-balance-input'
+  feeInput.type = 'number'
+  feeInput.inputMode = 'decimal'
+  feeInput.placeholder = '-1.00'
+  if (acctFees[key] != null) feeInput.value = acctFees[key]
+
+  const feeSaveBtn = document.createElement('button')
+  feeSaveBtn.className = 'acct-balance-save'
+  feeSaveBtn.type = 'button'
+  feeSaveBtn.textContent = 'Save'
+
+  const doFeeSave = () => {
+    const val = parseFloat(feeInput.value)
+    if (!isNaN(val)) {
+      acctFees[key] = val
+      feeBtn.textContent = fmtFeeBtn(val)
+    } else {
+      delete acctFees[key]
+      feeBtn.textContent = 'Fee'
+    }
+    saveFees()
+    feeRow.classList.remove('open')
+    renderAll()
+  }
+
+  feeSaveBtn.addEventListener('click', doFeeSave)
+  feeInput.addEventListener('keydown', e => { if (e.key === 'Enter') doFeeSave() })
+
+  feeBtn.addEventListener('click', e => {
+    e.preventDefault()
+    e.stopPropagation()
+    feeRow.classList.toggle('open')
+    if (feeRow.classList.contains('open')) feeInput.focus()
+  })
+
+  feeRow.appendChild(feeLabel)
+  feeRow.appendChild(feeInput)
+  feeRow.appendChild(feeSaveBtn)
+  wrap.appendChild(feeRow)
+
   return wrap
 }
 
@@ -1444,21 +1517,21 @@ function renderStats(trades) {
     : [...activeAccts]
   const initialBalance = visibleAccts.reduce((s, a) => s + (acctBalances[a] || 0), 0)
 
-  const tradePnl = trades.reduce((s, t) => s + t.pnl, 0)
+  const tradePnl = trades.reduce((s, t) => s + t.pnl + tradeFee(t), 0)
   const net = initialBalance + tradePnl
   const wins  = trades.filter(t => t.pnl > 0)
   const losses= trades.filter(t => t.pnl < 0)
   const winPct= trades.length ? (wins.length / trades.length * 100) : null
 
-  const grossWin  = wins.reduce((s,t) => s + t.pnl, 0)
-  const grossLoss = Math.abs(losses.reduce((s,t) => s + t.pnl, 0))
+  const grossWin  = wins.reduce((s,t) => s + t.pnl + tradeFee(t), 0)
+  const grossLoss = Math.abs(losses.reduce((s,t) => s + t.pnl + tradeFee(t), 0))
   const pf        = grossLoss > 0 ? grossWin / grossLoss : null
 
   // Day win %
   const dayMap = {}
   for (const t of trades) {
     if (!dayMap[t.dateKey]) dayMap[t.dateKey] = 0
-    dayMap[t.dateKey] += t.pnl
+    dayMap[t.dateKey] += t.pnl + tradeFee(t)
   }
   const days = Object.values(dayMap)
   const dayWins = days.filter(v => v > 0).length
@@ -1503,7 +1576,7 @@ function renderCalendar(trades) {
     if (d.getFullYear() !== calYear || d.getMonth() !== calMonth) continue
     const key = formatDateKey(d)
     if (!dayMap[key]) dayMap[key] = { pnl: 0, count: 0, wins: 0 }
-    dayMap[key].pnl   += t.pnl
+    dayMap[key].pnl   += t.pnl + tradeFee(t)
     dayMap[key].count += 1
     if (t.pnl > 0) dayMap[key].wins++
   }
@@ -1649,6 +1722,9 @@ function renderTable(trades) {
     const dateStr = `${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()}`
     const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 
+    const fee = tradeFee(t)
+    const adjPnl = t.pnl + fee
+
     const tr = document.createElement('tr')
     tr.innerHTML = `
       <td>${dateStr}</td>
@@ -1659,7 +1735,8 @@ function renderTable(trades) {
       <td style="font-family:monospace">${t.entry.toFixed(2)}</td>
       <td style="font-family:monospace">${t.exit.toFixed(2)}</td>
       <td>${t.duration < 1 ? Math.round(t.duration*60)+'s' : t.duration.toFixed(1)+'m'}</td>
-      <td class="${t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtDollar(t.pnl)}</td>
+      <td class="${adjPnl >= 0 ? 'pnl-pos' : 'pnl-neg'}">${fmtDollar(adjPnl)}</td>
+      <td class="${fee < 0 ? 'pnl-neg' : fee > 0 ? 'pnl-pos' : ''}">${fee !== 0 ? fmtDollar(fee) : '—'}</td>
       <td><span class="badge-acct">${t.account}</span></td>
     `
     tr.addEventListener('click', () => openTradeChart(t))
@@ -2518,6 +2595,7 @@ window.addEventListener('pageshow', e => {
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadFromStorage()
 loadBalances()
+loadFees()
 activeAccts = new Set(['all'])
 buildAccountChips()
 renderAll()

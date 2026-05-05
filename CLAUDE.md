@@ -4,7 +4,7 @@
 
 A mobile-first Progressive Web App for futures traders. Three pages:
 - **index.html** — Position sizing calculator ("Futures Calc")
-- **journal.html** — Trade journal with P&L calendar, charts, news, and daily checklist
+- **journal.html** — Trade journal with P&L calendar, charts, economic calendar, and daily checklist
 - **notes.html** — Trading notes (pre-market analysis, trade logs, post-session reviews)
 
 No build tools. Pure HTML + embedded CSS + vanilla JS. All three files are self-contained.
@@ -31,7 +31,7 @@ TradingCalc/
 ## PWA Setup
 
 ### Service Worker (`sw.js`)
-- Cache name: bump the version string (e.g. `'20260419b'`) on every deploy to force cache invalidation
+- Cache name: bump the version string (e.g. `'20260505b'`) on every deploy to force cache invalidation
 - Strategy: cache-first — serves from cache, falls back to network
 - Cached assets: `./`, `index.html`, `journal.html`, `notes.html`, `manifest.json`, `icon.svg`, Chart.js CDN
 - `skipWaiting()` + `clients.claim()` are set so new SW activates immediately on next open
@@ -102,12 +102,12 @@ Active-negative (Short in Trend/Direction): `background: var(--sell); color: #ff
 | Key | Page | Contents |
 |-----|------|----------|
 | `jrnl_trades_v1` | journal | All imported trades (array of trade objects) |
-| `jrnl_balances_v1` | journal | Account balance overrides (object keyed by account) |
+| `jrnl_balances_v1` | journal | Account initial balances (object keyed by account) |
+| `jrnl_fees_v1` | journal | Account trading fees per QTY (object keyed by account, negative dollar value) |
 | `jrnl_trading_notes_v1` | journal + notes | Trading notes array (shared between both pages) |
 | `jrnl_routine_v1` | journal | Daily Routine checklist text (newline-separated) |
 | `jrnl_rules_v1` | journal | Daily Rules text (bullet list) |
 | `jrnl_routine_checks_v1` | journal | Checkbox state for today's routine (`{ date, checks }`) |
-| `jrnl_av_news_v1` | journal | Cached Alpha Vantage news feed (`{ date, articles, time }`) |
 | `jrnl_lock_notes_v1` | journal | Login/credentials note (plain text) |
 | `monthlyGoal` | index + journal | Monthly profit goal (number, default 1250) |
 | `copyTrading` | index | Copy trading accounts count (number) |
@@ -206,10 +206,23 @@ For chart rendering: `entryTS = trade.side === 'Short' ? trade.soldTS : trade.bo
 | Button | ID | Icon | Function |
 |--------|----|------|----------|
 | Checklist | `checkBtn` | Checkmark | Daily Routine/Rules modal |
-| News | `newsBtn` | Broadcast antenna | Alpha Vantage news feed |
+| Calendar | `newsBtn` | Broadcast antenna | Economic Calendar modal (Investing.com iframe) |
 | Notes | `monitorBtn` | Document + pencil | Navigate to notes.html |
 | Logins | `lockBtn` | Lock | Editable credentials note |
 | Payouts | `moneyBtn` | Dollar | Payout tracker |
+
+### Account Dropdown & Fee System
+- Each account row in the dropdown has two buttons: **Edit** (initial balance) and **Fee** (trading fee per qty)
+- Clicking either toggles its own inline editor row below — same `.acct-balance-row` style
+- Fee is stored as a dollar amount per contract (typically negative, e.g. `-1`)
+- **Lucid accounts** (name contains "lucid", case-insensitive): auto-populated to `-1` on first render; still editable
+- Fee button label: `-$1/qty` (negative) or `+$0.50/qty` (positive); shows `Fee` when unset
+- `tradeFee(t)` helper: `(acctFees[t.account] || 0) * t.qty`
+- **Trades table Fee column**: shows fee amount (red if negative, `—` if no fee set)
+- **P&L column**: shows fee-adjusted P&L (`t.pnl + tradeFee(t)`)
+- **Stats bar dollar amounts**: all use fee-adjusted P&L (Net P&L, Avg Win, Avg Loss, Profit Factor)
+- **Win/loss classification**: always based on raw `t.pnl` from CSV — fee does not flip a win to a loss for counting purposes
+- **Calendar day/week totals**: fee-adjusted; trade win % badge (`%W`) uses raw P&L classification
 
 ### Calendar
 - **Grid**: 5 columns (Mon–Fri) + Week summary column — weekends hidden
@@ -235,12 +248,10 @@ For chart rendering: `entryTS = trade.side === 'Short' ? trade.soldTS : trade.bo
 - Crosshairs hidden: `vertLine: { visible: false }`, `horzLine: { visible: false }`
 - Chart config: `lastValueVisible: false`, `priceLineVisible: false`, `scaleMargins: { top: 0.08, bottom: 0.08 }`
 
-### News Feed (Alpha Vantage)
-- API key: `VKKZ65Z3HUM880TJ`
-- Tickers: `QQQ,NVDA,AAPL,MSFT,AMZN,META,GOOGL,TSLA,AVGO,AMD,SPY,GLD`
-- Topics: `economy_monetary,economy_macro`
-- Cached in `jrnl_av_news_v1` by date (one fetch per day, 25 call/day free tier)
-- Fetches AV directly first (CORS supported), proxy as fallback
+### Economic Calendar Modal
+- Opens directly to Investing.com iframe — no tabs
+- `src`: `https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=5&calType=week&timeZone=8&lang=1&theme=dark`
+- `min-width: 680px` on iframe to prevent layout collapse on mobile
 
 ### Add Note Modal (from calendar)
 - Appears when a calendar day is selected — "+ Note" button in Trades card header
@@ -347,7 +358,7 @@ Journal back button: `height: 30px; line-height: 30px; padding: 0 14px`
 - **Deployed at**: `https://yf-proxy.sagemediaco.workers.dev`
 - **Source**: `proxy-worker.js`
 - **Wrangler config**: `wrangler-proxy.toml` (`name = "yf-proxy"`)
-- **Allowed hosts**: `finance.yahoo.com`, `alphavantage.co`, `www.alphavantage.co`
+- **Allowed hosts**: `finance.yahoo.com`
 - **Usage**: `GET /proxy?url=<encoded_url>`
 - Health check: `GET /` returns "Yahoo Finance proxy OK"
 - Adds browser-like User-Agent headers to bypass Yahoo bot detection
@@ -355,11 +366,6 @@ Journal back button: `height: 30px; line-height: 30px; padding: 0 14px`
 ### Yahoo Finance API
 - Endpoint: `https://query1.finance.yahoo.com/v8/finance/chart/<symbol>`
 - Used for: candlestick chart data in trade chart modal
-
-### Alpha Vantage
-- Function: `NEWS_SENTIMENT`
-- Free tier: 25 calls/day
-- Direct fetch first (CORS supported), proxy fallback
 
 ### TradingView Lightweight Charts
 - Version: 4.1.3
@@ -372,7 +378,7 @@ Journal back button: `height: 30px; line-height: 30px; padding: 0 14px`
 
 - Hosted via GitHub Pages or similar static host
 - Deploy by pushing files to repo — no build step
-- After any file change, bump `CACHE_NAME` in `sw.js` (e.g. `'20260419b'` → increment suffix)
+- After any file change, bump `CACHE_NAME` in `sw.js` (e.g. `'20260505b'` → increment suffix)
 - CF Worker deploy: `npx wrangler deploy --config wrangler-proxy.toml`
 
 ### Local Dev

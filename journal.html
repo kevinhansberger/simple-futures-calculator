@@ -331,7 +331,7 @@
     .cal-month-label { font-size: .85rem; font-weight: 600; }
     .cal-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr) 80px;
+      grid-template-columns: repeat(5, 1fr) 80px;
       gap: 3px;
     }
     .cal-day-name {
@@ -387,7 +387,7 @@
     .cal-pnl.neg { color: var(--sell); }
     .cal-meta { font-size: .6rem; color: var(--text-dim); }
     @media (max-width: 580px) {
-      .cal-grid { grid-template-columns: repeat(7, 1fr) 54px; }
+      .cal-grid { grid-template-columns: repeat(5, 1fr) 54px; }
       .cal-cell { min-height: 46px; padding: 4px 3px; }
       .cal-pnl { font-size: .62rem; }
     }
@@ -1490,7 +1490,7 @@ function fmtDollar(n) {
 }
 
 // ── Calendar ─────────────────────────────────────────────────────────────────
-const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri']
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 function renderCalendar(trades) {
@@ -1531,18 +1531,20 @@ function renderCalendar(trades) {
   const firstDow = new Date(calYear, calMonth, 1).getDay()
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
 
-  let weekPnl = 0
-  let weekStart = 0 // track week
-
-  // Leading blanks
-  for (let i = 0; i < firstDow; i++) {
+  // Leading blanks: Mon(1)=0, Tue(2)=1, Wed(3)=2, Thu(4)=3, Fri(5)=4, Sat/Sun=0
+  const leadingBlanks = (firstDow >= 1 && firstDow <= 5) ? firstDow - 1 : 0
+  for (let i = 0; i < leadingBlanks; i++) {
     const el = document.createElement('div')
     el.className = 'cal-cell empty'
     grid.appendChild(el)
   }
 
+  let weekPnl = 0
+
   for (let d = 1; d <= daysInMonth; d++) {
-    const dow = (firstDow + d - 1) % 7
+    const dow = (firstDow + d - 1) % 7  // 0=Sun,1=Mon,...,6=Sat
+    if (dow === 0 || dow === 6) continue  // skip weekends
+
     const key = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const info = dayMap[key]
 
@@ -1573,11 +1575,9 @@ function renderCalendar(trades) {
       weekPnl += info.pnl
     }
 
-    // Click to select day (for trades filter + note button)
     el.addEventListener('click', () => {
       selectedCalDay = selectedCalDay === key ? null : key
       document.getElementById('addNoteBtn').style.display = selectedCalDay ? 'block' : 'none'
-      // Update selected highlight without full re-render
       document.querySelectorAll('.cal-cell.selected').forEach(c => c.classList.remove('selected'))
       if (selectedCalDay) el.classList.add('selected')
       renderTable(selectedCalDay
@@ -1590,8 +1590,27 @@ function renderCalendar(trades) {
 
     grid.appendChild(el)
 
-    // End of week (Saturday) or end of month → insert week summary
-    if (dow === 6 || d === daysInMonth) {
+    // End of week: Friday (dow=5) or last weekday of month
+    const isFriday = dow === 5
+    const isLastWeekday = (() => {
+      for (let nd = d + 1; nd <= daysInMonth; nd++) {
+        const ndow = (firstDow + nd - 1) % 7
+        if (ndow >= 1 && ndow <= 5) return false
+      }
+      return true
+    })()
+
+    if (isFriday || isLastWeekday) {
+      // Trailing blanks when week ends before Friday
+      if (!isFriday) {
+        const col = dow - 1  // Mon=0 … Fri=4
+        for (let fill = col + 1; fill < 5; fill++) {
+          const blank = document.createElement('div')
+          blank.className = 'cal-cell empty'
+          grid.appendChild(blank)
+        }
+      }
+
       const weeklyGoal = Math.ceil((parseFloat(localStorage.getItem('monthlyGoal')) || 1250) / 3)
       const wkEl = document.createElement('div')
       wkEl.className = 'cal-week-label'
@@ -1604,15 +1623,6 @@ function renderCalendar(trades) {
       wkEl.appendChild(wkPnlEl)
       grid.appendChild(wkEl)
       weekPnl = 0
-
-      // If last day didn't fall on Saturday, fill remaining cells
-      if (d === daysInMonth && dow !== 6) {
-        for (let fill = dow + 1; fill < 7; fill++) {
-          const blank = document.createElement('div')
-          blank.className = 'cal-cell empty'
-          grid.appendChild(blank)
-        }
-      }
     }
   }
 }

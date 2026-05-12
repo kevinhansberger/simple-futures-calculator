@@ -878,27 +878,6 @@
   </div>
 </div>
 
-<!-- News Modal -->
-<div class="modal-overlay" id="newsOverlay">
-  <div class="modal news-modal">
-    <div class="modal-header">
-      <h2>Economic Calendar</h2>
-      <button class="modal-close" id="newsClose">✕</button>
-    </div>
-    <div style="flex:1;overflow-x:auto;overflow-y:auto">
-      <iframe
-        id="calendarFrame"
-        src="https://sslecal2.investing.com/?columns=exc_importance,exc_actual,exc_forecast,exc_previous&features=timezone&countries=5&calType=day&timeZone=7&lang=1&theme=dark&importance=3"
-        frameborder="0"
-        allowtransparency="true"
-        marginwidth="0"
-        marginheight="0"
-        style="min-width:680px;width:100%;height:100%;border:none;display:block">
-      </iframe>
-    </div>
-  </div>
-</div>
-
 <!-- Lock Notes Modal -->
 <div class="modal-overlay" id="lockOverlay">
   <div class="modal">
@@ -2181,7 +2160,17 @@ function renderRoutineCheckboxes(items, checks) {
     box.className = 'routine-check'
     const lbl = document.createElement('span')
     lbl.className = 'routine-label'
-    lbl.textContent = text
+    if (text === 'Mark High Impact News') {
+      const a = document.createElement('a')
+      a.href = 'https://sslecal2.investing.com/?columns=exc_importance,exc_actual,exc_forecast,exc_previous&features=timezone&countries=5&calType=day&timeZone=7&lang=1&theme=dark&importance=3'
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.textContent = text
+      a.style.cssText = 'color:inherit;text-decoration:underline;text-decoration-color:rgba(224,224,224,.4)'
+      lbl.appendChild(a)
+    } else {
+      lbl.textContent = text
+    }
     label.appendChild(cb)
     label.appendChild(box)
     label.appendChild(lbl)

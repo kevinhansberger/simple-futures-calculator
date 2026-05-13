@@ -1565,7 +1565,7 @@ function renderCalendar(trades) {
         }
       }
 
-      const weeklyGoal = Math.ceil((parseFloat(localStorage.getItem('monthlyGoal')) || 1250) / 3)
+      const weeklyGoal = Math.ceil((parseFloat(localStorage.getItem('monthlyGoal')) || 1250) / 4)
       const wkEl = document.createElement('div')
       wkEl.className = 'cal-week-label'
       const wkPnlEl = document.createElement('div')

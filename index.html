@@ -512,9 +512,9 @@
     $('riskDisplay').value = micros * 2
 
     // Goals
-    const weekly   = Math.ceil(monthlyGoal / 3)
-    const daily    = weekly / 3
-    const maxLoss  = weekly / 2
+    const weekly   = Math.ceil(monthlyGoal / 4)
+    const daily    = weekly / 2
+    const maxLoss  = daily * 2
 
     $('outWeekly').textContent  = '$' + fmtC(weekly)
     $('outDaily').textContent   = '$' + fmtC(daily)

@@ -411,13 +411,6 @@
           <div class="price-box-strat strat-sl" id="stratSl1"></div>
         </div>
       </div>
-      <div class="price-box sl2">
-        <div class="price-box-label">SL2</div>
-        <div class="price-box-row">
-          <div class="price-box-value" id="outSl2">—</div>
-          <div class="price-box-strat strat-sl" id="stratSl2"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -433,13 +426,12 @@
             <th>Qty</th>
             <th>TP1</th>
             <th>SL1</th>
-            <th>SL2</th>
             <th>TP2</th>
           </tr>
         </thead>
         <tbody id="strategyBody">
-          <tr><td>A+ (NY AVWAP)</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="sl2" id="sl20">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="sl2" id="sl21">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>A+ (NY AVWAP)</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="tp" id="tp20">—</td></tr>
+          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="tp" id="tp21">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -483,12 +475,11 @@
   const fmtP  = n => n === '' || n === null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
   function calcTPSL(qty) {
-    if (!qty || qty === 0) return { tp1: '', sl1: '', sl2: '', tp2: '' }
+    if (!qty || qty === 0) return { tp1: '', sl1: '', tp2: '' }
     const tp1 = qty === 1 ? 1 : qty - 1
     const sl1 = Math.round(qty / 2)
-    const sl2 = (qty - sl1) === 0 ? '' : qty - sl1
     const tp2 = qty <= 1 ? '' : 1
-    return { tp1, sl1, sl2, tp2 }
+    return { tp1, sl1, tp2 }
   }
 
   // ── Main recalculate ──
@@ -520,7 +511,6 @@
       $('qty' + i).innerHTML = `<span>${qty || '0'}</span>`
       $('tp1' + i).textContent = tpsl.tp1 !== '' ? tpsl.tp1 : '—'
       $('sl1' + i).textContent = tpsl.sl1 !== '' ? tpsl.sl1 : '—'
-      $('sl2' + i).textContent = tpsl.sl2 !== '' ? tpsl.sl2 : '—'
       $('tp2' + i).textContent = tpsl.tp2 !== '' ? tpsl.tp2 : '—'
 
       rows[i].classList.toggle('dim', qty === 0)
@@ -529,26 +519,23 @@
     // Price levels
     const hasPrice = !isNaN(price) && price > 0
     if (hasPrice) {
-      let entry, sl1, sl2, tp2
+      let tp1, sl1, tp2
       if (direction === 'b') {
-        entry = price + micros + micros * 0.25
-        sl1   = price - micros
-        sl2   = price - micros * 2
-        tp2   = price + micros * 2
+        tp1 = price + micros
+        sl1 = price - micros
+        tp2 = price + micros * 2
       } else {
-        entry = price - micros - micros * 0.25
-        sl1   = price + micros
-        sl2   = price + micros * 2
-        tp2   = price - micros * 2
+        tp1 = price - micros
+        sl1 = price + micros
+        tp2 = price - micros * 2
       }
-      $('outEntry').textContent = fmtP(entry)
+      $('outEntry').textContent = fmtP(tp1)
       $('outSl1').textContent   = fmtP(sl1)
-      $('outSl2').textContent   = fmtP(sl2)
       $('outTp2').textContent   = fmtP(tp2)
 
       document.querySelectorAll('.price-box').forEach(b => b.classList.remove('no-price'))
     } else {
-      ['outEntry','outSl1','outSl2','outTp2'].forEach(id => $( id).textContent = '—')
+      ['outEntry','outSl1','outTp2'].forEach(id => $(id).textContent = '—')
       document.querySelectorAll('.price-box').forEach(b => b.classList.add('no-price'))
     }
 
@@ -596,9 +583,7 @@
     $('stratTp1').textContent = ''
     $('stratTp2').textContent = ''
     $('stratSl1').textContent = ''
-    $('stratSl2').textContent = ''
     $('outTp2').closest('.price-box').style.opacity = ''
-    $('outSl2').closest('.price-box').style.opacity = ''
     updateEntryQtyBadge()
   }
 
@@ -608,16 +593,12 @@
       r === row ? r.classList.remove('row-dimmed') : r.classList.add('row-dimmed')
     )
     const hasTp2 = $('tp2' + i).textContent !== '—'
-    const hasSl2 = $('sl2' + i).textContent !== '—'
 
     $('stratTp1').textContent = $('tp1' + i).textContent !== '—' ? $('tp1' + i).textContent : ''
     $('stratSl1').textContent = $('sl1' + i).textContent !== '—' ? $('sl1' + i).textContent : ''
     $('stratTp2').textContent = hasTp2 ? $('tp2' + i).textContent : ''
-    $('stratSl2').textContent = hasSl2 ? $('sl2' + i).textContent : ''
 
-    // Hide price values for levels the strategy doesn't use
     $('outTp2').closest('.price-box').style.opacity = hasTp2 ? '' : '0.15'
-    $('outSl2').closest('.price-box').style.opacity = hasSl2 ? '' : '0.15'
     updateEntryQtyBadge()
   }
 

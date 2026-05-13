@@ -351,18 +351,12 @@
     <div class="card-title">Start</div>
     <div class="input-grid">
 
-      <!-- Row 1: ATR | Risk (2×ATR, readonly) -->
       <div class="input-group">
         <label for="micros">ATR</label>
         <input type="number" id="micros" value="20" min="1" inputmode="numeric">
       </div>
 
-      <div class="input-group">
-        <label for="riskDisplay">Risk</label>
-        <input type="number" id="riskDisplay" readonly tabindex="-1">
-      </div>
-
-      <!-- Row 2: Direction | Ticker -->
+      <!-- Direction | Ticker -->
       <div class="input-group">
         <label>Direction</label>
         <div class="dir-toggle">
@@ -507,9 +501,6 @@
     const contract    = $('contract').value
     const price       = parseFloat($('price').value)
     const mult        = MULT[contract]
-
-    // Risk display = ATR × 2 (readonly)
-    $('riskDisplay').value = micros * 2
 
     // Goals
     const weekly   = Math.ceil(monthlyGoal / 4)

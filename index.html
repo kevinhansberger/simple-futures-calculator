@@ -430,8 +430,7 @@
           </tr>
         </thead>
         <tbody id="strategyBody">
-          <tr><td>A+ (NY AVWAP)</td>   <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="tp" id="tp20">—</td></tr>
-          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt1">—</td><td class="qty" id="qty1">—</td><td class="tp" id="tp11">—</td><td class="sl" id="sl11">—</td><td class="tp" id="tp21">—</td></tr>
+          <tr><td>A (NY AVWAP)</td>    <td class="target" id="tgt0">—</td><td class="qty" id="qty0">—</td><td class="tp" id="tp10">—</td><td class="sl" id="sl10">—</td><td class="tp" id="tp20">—</td></tr>
         </tbody>
       </table>
     </div>
@@ -500,7 +499,7 @@
     $('outMaxLoss').textContent = '$' + fmtC(maxLoss)
 
     // Strategy targets
-    const targets = [daily * 1.25, daily]
+    const targets = [daily]
     const rows = $('strategyBody').rows
 
     targets.forEach((target, i) => {

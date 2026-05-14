@@ -1,7 +1,8 @@
-const CACHE_NAME = '20260505b'
+const CACHE_NAME = '20260505c'
 const ASSETS = [
   './',
   './index.html',
+  './calc.html',
   './journal.html',
   './notes.html',
   './manifest.json',

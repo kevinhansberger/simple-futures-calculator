@@ -452,6 +452,10 @@
       <span class="goal-value" id="outDaily">—</span>
     </div>
     <div class="goal-row">
+      <span class="goal-label">Max Trade Loss</span>
+      <span class="goal-value warn" id="outMaxTradeLoss">—</span>
+    </div>
+    <div class="goal-row">
       <span class="goal-label">Max Daily Loss</span>
       <span class="goal-value warn" id="outMaxLoss">—</span>
     </div>
@@ -497,6 +501,18 @@
     $('outWeekly').textContent  = '$' + fmtC(weekly)
     $('outDaily').textContent   = '$' + fmtC(daily)
     $('outMaxLoss').textContent = '$' + fmtC(maxLoss)
+
+    // Max Trade Loss = 1% of journal Net P&L
+    try {
+      const jTrades  = JSON.parse(localStorage.getItem('jrnl_trades_v1') || '[]')
+      const jBal     = JSON.parse(localStorage.getItem('jrnl_balances_v1') || '{}')
+      const jFees    = JSON.parse(localStorage.getItem('jrnl_fees_v1') || '{}')
+      const accts    = [...new Set(jTrades.map(t => t.account))]
+      const initBal  = accts.reduce((s, a) => s + (jBal[a] || 0), 0)
+      const tradePnl = jTrades.reduce((s, t) => s + t.pnl + (jFees[t.account] || 0) * t.qty, 0)
+      const netPnl   = initBal + tradePnl
+      $('outMaxTradeLoss').textContent = netPnl > 0 ? '$' + fmtC(netPnl * 0.01) : '—'
+    } catch { $('outMaxTradeLoss').textContent = '—' }
 
     // Strategy targets
     const targets = [daily]
